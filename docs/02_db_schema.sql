@@ -111,6 +111,15 @@ CREATE TABLE pms_project (
     actual_end_date     DATE,
     total_budget        DECIMAL(15,2),
     contract_amount     DECIMAL(15,2),
+    -- 입찰단계 전용 컬럼
+    project_stage       VARCHAR(20) DEFAULT 'EXECUTION' CHECK (project_stage IN ('BIDDING','EXECUTION','COMPLETED')),
+    bid_status          VARCHAR(20) CHECK (bid_status IN ('PREPARING','SUBMITTED','WAITING','WON','LOST')),
+    consortium_role     VARCHAR(100),    -- 컨소시엄 역할
+    consortium_share    DECIMAL(5,2),    -- 지분율(%)
+    vrb_status          VARCHAR(20),     -- VRB 상태
+    announcement_no     VARCHAR(100),    -- 공고번호
+    proposal_deadline   DATE,            -- 제안서 제출마감일
+    risk_level          VARCHAR(10) DEFAULT '보통' CHECK (risk_level IN ('높음','보통','낮음')),
     created_at          TIMESTAMP       NOT NULL DEFAULT NOW(),
     updated_at          TIMESTAMP,
     created_by          BIGINT,
@@ -398,7 +407,7 @@ CREATE TRIGGER trg_pms_issue_updated_at
 -- -----------------------------------------------------------------------------
 CREATE TABLE pms_action_item (
     action_id           BIGSERIAL       PRIMARY KEY,
-    issue_id            BIGINT          NOT NULL
+    issue_id            BIGINT
                             CONSTRAINT fk_action_issue
                             REFERENCES pms_issue(issue_id)
                             ON DELETE CASCADE,
@@ -669,6 +678,77 @@ COMMENT ON COLUMN pms_template_tag_mapping.data_source IS '데이터 소스 경�
 CREATE TRIGGER trg_pms_template_tag_mapping_updated_at
     BEFORE UPDATE ON pms_template_tag_mapping
     FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+-- =============================================
+-- 18. PMS_MEETING (회의록)
+-- =============================================
+CREATE TABLE pms_meeting (
+    meeting_id      BIGSERIAL PRIMARY KEY,
+    project_id      BIGINT NOT NULL REFERENCES pms_project(project_id) ON DELETE CASCADE,
+    title           VARCHAR(300) NOT NULL,
+    meeting_type    VARCHAR(50) NOT NULL,  -- '의사결정 회의', '정기 회의', '킥오프', '검토 회의' etc
+    meeting_date    TIMESTAMP NOT NULL,
+    location        VARCHAR(300),
+    attendees       TEXT,                  -- comma-separated or JSON
+    agenda          TEXT,
+    minutes         TEXT,
+    status          VARCHAR(20) DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','COMPLETED','CANCELLED')),
+    author_id       BIGINT REFERENCES pms_user(user_id) ON DELETE SET NULL,
+    created_at      TIMESTAMP DEFAULT NOW(),
+    updated_at      TIMESTAMP DEFAULT NOW(),
+    created_by      BIGINT REFERENCES pms_user(user_id) ON DELETE SET NULL,
+    updated_by      BIGINT REFERENCES pms_user(user_id) ON DELETE SET NULL
+);
+
+COMMENT ON TABLE pms_meeting IS '회의록';
+COMMENT ON COLUMN pms_meeting.meeting_type IS '의사결정 회의, 정기 회의, 킥오프, 검토 회의 등';
+
+CREATE TRIGGER trg_pms_meeting_updated_at
+    BEFORE UPDATE ON pms_meeting
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+CREATE INDEX idx_pms_meeting_project ON pms_meeting(project_id);
+CREATE INDEX idx_pms_meeting_date ON pms_meeting(meeting_date);
+CREATE INDEX idx_pms_meeting_status ON pms_meeting(status);
+
+-- =============================================
+-- 19. PMS_OFFICIAL_DOC (공문)
+-- =============================================
+CREATE TABLE pms_official_doc (
+    doc_id              BIGSERIAL PRIMARY KEY,
+    project_id          BIGINT NOT NULL REFERENCES pms_project(project_id) ON DELETE CASCADE,
+    doc_no              VARCHAR(100) UNIQUE,       -- 품의번호, e.g. OKE-202603-000312
+    title               VARCHAR(500) NOT NULL,
+    direction           VARCHAR(10) NOT NULL CHECK (direction IN ('INBOUND','OUTBOUND')),  -- 수신/발신
+    sender_org          VARCHAR(200),              -- 발신 기관
+    receiver_org        VARCHAR(200),              -- 수신 기관
+    drafter_id          BIGINT REFERENCES pms_user(user_id) ON DELETE SET NULL,  -- 기안자
+    draft_dept          VARCHAR(100),              -- 기안부서
+    sent_date           DATE,                      -- 발신일/시행일자
+    approval_status     VARCHAR(20) DEFAULT 'PENDING' CHECK (approval_status IN ('PENDING','APPROVED','REJECTED','CANCELLED')),
+    review_status       VARCHAR(20) DEFAULT 'PENDING' CHECK (review_status IN ('PENDING','APPROVED','REJECTED')),  -- 협의상태
+    attachment_count    INT DEFAULT 0,
+    content             TEXT,
+    created_at          TIMESTAMP DEFAULT NOW(),
+    updated_at          TIMESTAMP DEFAULT NOW(),
+    created_by          BIGINT REFERENCES pms_user(user_id) ON DELETE SET NULL,
+    updated_by          BIGINT REFERENCES pms_user(user_id) ON DELETE SET NULL
+);
+
+COMMENT ON TABLE pms_official_doc IS '공문 (수발신 공문 관리)';
+COMMENT ON COLUMN pms_official_doc.doc_no IS '품의번호 (예: OKE-202603-000312)';
+COMMENT ON COLUMN pms_official_doc.direction IS 'INBOUND=수신, OUTBOUND=발신';
+COMMENT ON COLUMN pms_official_doc.approval_status IS '결재 상태';
+COMMENT ON COLUMN pms_official_doc.review_status IS '협의 상태';
+
+CREATE TRIGGER trg_pms_official_doc_updated_at
+    BEFORE UPDATE ON pms_official_doc
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+CREATE INDEX idx_pms_official_doc_project ON pms_official_doc(project_id);
+CREATE INDEX idx_pms_official_doc_no ON pms_official_doc(doc_no);
+CREATE INDEX idx_pms_official_doc_approval ON pms_official_doc(approval_status);
+CREATE INDEX idx_pms_official_doc_direction ON pms_official_doc(direction);
 
 -- =============================================================================
 -- 3. INDEXES

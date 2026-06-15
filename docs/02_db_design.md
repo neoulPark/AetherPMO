@@ -53,6 +53,8 @@ PostgreSQL을 기반으로 설계되었으며, 프로젝트·업무·이슈·산
 | 15 | PMS_ACTIVITY_LOG | 활동 로그 |
 | 16 | PMS_DOCUMENT_TEMPLATE | 문서 템플릿 |
 | 17 | PMS_TEMPLATE_TAG_MAPPING | 템플릿 태그 매핑 |
+| 18 | PMS_MEETING | 회의록 관리 |
+| 19 | PMS_OFFICIAL_DOC | 공문(수발신) 관리 |
 
 ---
 
@@ -262,6 +264,19 @@ PLANNING → IN_PROGRESS → COMPLETED
                        → CANCELLED
 ```
 
+**입찰단계 전용 컬럼 (v1.1 추가)**
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| project_stage | VARCHAR(20) | CHECK ('BIDDING','EXECUTION','COMPLETED') DEFAULT 'EXECUTION' | 프로젝트 단계 구분 |
+| bid_status | VARCHAR(20) | CHECK ('PREPARING','SUBMITTED','WAITING','WON','LOST') | 입찰 상태 |
+| consortium_role | VARCHAR(100) | | 컨소시엄 역할 |
+| consortium_share | DECIMAL(5,2) | | 컨소시엄 지분율(%) |
+| vrb_status | VARCHAR(20) | | VRB 상태 |
+| announcement_no | VARCHAR(100) | | 나라장터 공고번호 |
+| proposal_deadline | DATE | | 제안서 제출마감일 |
+| risk_level | VARCHAR(10) | CHECK ('높음','보통','낮음') DEFAULT '보통' | 사업 위험도 |
+
 ---
 
 ### 4.4 PMS_TASK (업무)
@@ -422,7 +437,7 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 | 컬럼명 | 타입 | 제약조건 | 설명 |
 |--------|------|----------|------|
 | action_id | BIGSERIAL | PK | 조치 항목 고유 ID |
-| issue_id | BIGINT | FK→PMS_ISSUE NOT NULL | 연관 이슈 |
+| issue_id | BIGINT | FK→PMS_ISSUE (nullable) | 연관 이슈 (NULL 허용 - 독립적 Action Item 가능) |
 | description | TEXT | NOT NULL | 조치 내용 |
 | assignee_id | BIGINT | FK→PMS_USER | 담당자 |
 | due_date | DATE | | 완료 기한 |
@@ -583,6 +598,61 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 | updated_at | TIMESTAMP | | 수정일시 |
 | created_by | BIGINT | | 생성자 |
 | updated_by | BIGINT | | 수정자 |
+
+---
+
+### 4.18 PMS_MEETING (회의록)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| meeting_id | BIGSERIAL | PK | 회의록 고유 ID |
+| project_id | BIGINT | FK→PMS_PROJECT NOT NULL | 소속 프로젝트 |
+| title | VARCHAR(300) | NOT NULL | 회의 제목 |
+| meeting_type | VARCHAR(50) | NOT NULL | 회의 유형 (의사결정 회의/정기 회의/킥오프/검토 회의 등) |
+| meeting_date | TIMESTAMP | NOT NULL | 회의 일시 |
+| location | VARCHAR(300) | | 회의 장소 |
+| attendees | TEXT | | 참석자 목록 (쉼표 구분 또는 JSON) |
+| agenda | TEXT | | 회의 안건 |
+| minutes | TEXT | | 회의록 본문 |
+| status | VARCHAR(20) | CHECK ('DRAFT','COMPLETED','CANCELLED') DEFAULT 'DRAFT' | 회의록 상태 |
+| author_id | BIGINT | FK→PMS_USER (nullable) | 작성자 |
+| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
+| updated_at | TIMESTAMP | DEFAULT NOW() | 수정일시 |
+| created_by | BIGINT | FK→PMS_USER | 생성자 |
+| updated_by | BIGINT | FK→PMS_USER | 수정자 |
+
+**인덱스**: `idx_pms_meeting_project(project_id)`, `idx_pms_meeting_date(meeting_date)`, `idx_pms_meeting_status(status)`
+
+---
+
+### 4.19 PMS_OFFICIAL_DOC (공문)
+
+| 컬럼명 | 타입 | 제약조건 | 설명 |
+|--------|------|----------|------|
+| doc_id | BIGSERIAL | PK | 공문 고유 ID |
+| project_id | BIGINT | FK→PMS_PROJECT NOT NULL | 소속 프로젝트 |
+| doc_no | VARCHAR(100) | UNIQUE | 품의번호 (예: OKE-202603-000312) |
+| title | VARCHAR(500) | NOT NULL | 공문 제목 |
+| direction | VARCHAR(10) | CHECK ('INBOUND','OUTBOUND') NOT NULL | 수발신 구분 |
+| sender_org | VARCHAR(200) | | 발신 기관 |
+| receiver_org | VARCHAR(200) | | 수신 기관 |
+| drafter_id | BIGINT | FK→PMS_USER (nullable) | 기안자 |
+| draft_dept | VARCHAR(100) | | 기안부서 |
+| sent_date | DATE | | 발신일/시행일자 |
+| approval_status | VARCHAR(20) | CHECK ('PENDING','APPROVED','REJECTED','CANCELLED') DEFAULT 'PENDING' | 결재 상태 |
+| review_status | VARCHAR(20) | CHECK ('PENDING','APPROVED','REJECTED') DEFAULT 'PENDING' | 협의 상태 |
+| attachment_count | INT | DEFAULT 0 | 첨부파일 수 |
+| content | TEXT | | 공문 내용 |
+| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
+| updated_at | TIMESTAMP | DEFAULT NOW() | 수정일시 |
+| created_by | BIGINT | FK→PMS_USER | 생성자 |
+| updated_by | BIGINT | FK→PMS_USER | 수정자 |
+
+**direction 설명**
+- INBOUND: 수신 공문
+- OUTBOUND: 발신 공문
+
+**인덱스**: `idx_pms_official_doc_project(project_id)`, `idx_pms_official_doc_no(doc_no)`, `idx_pms_official_doc_approval(approval_status)`, `idx_pms_official_doc_direction(direction)`
 
 ---
 

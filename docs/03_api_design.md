@@ -20,6 +20,8 @@
 10. [알림 API](#10-알림-api-notification)
 11. [대시보드 API](#11-대시보드-api)
 12. [활동 이력 API](#12-활동-이력-api)
+13. [공문 API](#13-공문-api-official-doc)
+14. [회의록 API](#14-회의록-api-meeting)
 
 ---
 
@@ -3615,6 +3617,600 @@ Authorization: Bearer {JWT_ACCESS_TOKEN}
 |------|------|------|
 | `TASK_NOT_FOUND` | 404 | Task를 찾을 수 없음 |
 | `ACCESS_DENIED` | 403 | 접근 권한 없음 |
+
+---
+
+---
+
+## 13. 공문 API (OFFICIAL-DOC)
+
+### 13.1 프로젝트 공문 목록 조회
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `GET` |
+| **URL** | `/api/v1/projects/{projectId}/official-docs` |
+| **설명** | 특정 프로젝트의 공문 목록을 조회합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM`/`MEMBER` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `projectId` | integer | 프로젝트 ID |
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| `page` | integer | N | 0 | 페이지 번호 |
+| `size` | integer | N | 20 | 페이지당 항목 수 |
+| `direction` | string | N | - | 수발신 구분 (`INBOUND`, `OUTBOUND`) |
+| `approvalStatus` | string | N | - | 결재 상태 필터 |
+| `keyword` | string | N | - | 제목 검색어 |
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "docNo": "OKE-202603-000312",
+        "title": "개발환경 구축 관련 협조 요청",
+        "direction": "OUTBOUND",
+        "senderOrg": "(주)OKE",
+        "receiverOrg": "(주)고객사",
+        "sentDate": "2026-03-15",
+        "approvalStatus": "APPROVED",
+        "reviewStatus": "APPROVED",
+        "attachmentCount": 2,
+        "drafter": { "id": 1, "name": "홍길동" },
+        "createdAt": "2026-03-14T10:00:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 5,
+    "totalPages": 1,
+    "first": true,
+    "last": true
+  },
+  "message": "조회가 완료되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `PROJECT_NOT_FOUND` | 404 | 프로젝트를 찾을 수 없음 |
+
+---
+
+### 13.2 공문 등록
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `POST` |
+| **URL** | `/api/v1/projects/{projectId}/official-docs` |
+| **설명** | 프로젝트에 공문을 등록합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM` |
+
+**Request Body**
+
+```json
+{
+  "docNo": "OKE-202606-000450",
+  "title": "시스템 설계 검토 요청",
+  "direction": "OUTBOUND",
+  "senderOrg": "(주)OKE",
+  "receiverOrg": "(주)고객사",
+  "drafterId": 1,
+  "draftDept": "개발팀",
+  "sentDate": "2026-06-15",
+  "content": "시스템 설계서 검토를 요청드립니다."
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `docNo` | string | N | 품의번호 (자동 생성 가능) |
+| `title` | string | Y | 공문 제목 |
+| `direction` | string | Y | `INBOUND` 또는 `OUTBOUND` |
+| `senderOrg` | string | N | 발신 기관 |
+| `receiverOrg` | string | N | 수신 기관 |
+| `drafterId` | integer | N | 기안자 ID |
+| `draftDept` | string | N | 기안부서 |
+| `sentDate` | string | N | 발신일 (yyyy-MM-dd) |
+| `content` | string | N | 공문 내용 |
+
+**Response Body (201)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "docNo": "OKE-202606-000450",
+    "title": "시스템 설계 검토 요청",
+    "direction": "OUTBOUND",
+    "approvalStatus": "PENDING",
+    "reviewStatus": "PENDING",
+    "createdAt": "2026-06-15T10:30:00Z"
+  },
+  "message": "공문이 등록되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `PROJECT_NOT_FOUND` | 404 | 프로젝트를 찾을 수 없음 |
+| `DOC_NO_DUPLICATE` | 409 | 이미 사용 중인 품의번호 |
+| `VALIDATION_ERROR` | 422 | 입력값 유효성 오류 |
+
+---
+
+### 13.3 전체 공문 목록 조회
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `GET` |
+| **URL** | `/api/v1/official-docs` |
+| **설명** | 전체 공문 목록을 조회합니다. 프로젝트, 결재 상태 등으로 필터링 가능합니다. |
+| **권한** | `ADMIN`, `PM` |
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| `page` | integer | N | 0 | 페이지 번호 |
+| `size` | integer | N | 20 | 페이지당 항목 수 |
+| `projectId` | integer | N | - | 프로젝트 필터 |
+| `approvalStatus` | string | N | - | 결재 상태 필터 (`PENDING`,`APPROVED`,`REJECTED`,`CANCELLED`) |
+| `direction` | string | N | - | 수발신 구분 필터 |
+| `keyword` | string | N | - | 제목/품의번호 검색어 |
+
+**Response Body (200)**: 13.1과 동일한 페이징 형식
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `ACCESS_DENIED` | 403 | 권한 없음 |
+
+---
+
+### 13.4 공문 상세 조회
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `GET` |
+| **URL** | `/api/v1/official-docs/{id}` |
+| **설명** | 공문 상세 정보를 조회합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM`/`MEMBER` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `id` | integer | 공문 ID |
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "project": { "id": 10, "name": "ERP 시스템 구축" },
+    "docNo": "OKE-202606-000450",
+    "title": "시스템 설계 검토 요청",
+    "direction": "OUTBOUND",
+    "senderOrg": "(주)OKE",
+    "receiverOrg": "(주)고객사",
+    "drafter": { "id": 1, "name": "홍길동" },
+    "draftDept": "개발팀",
+    "sentDate": "2026-06-15",
+    "approvalStatus": "APPROVED",
+    "reviewStatus": "APPROVED",
+    "attachmentCount": 2,
+    "content": "시스템 설계서 검토를 요청드립니다.",
+    "createdAt": "2026-06-15T10:30:00Z",
+    "updatedAt": "2026-06-15T10:30:00Z"
+  },
+  "message": "조회가 완료되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `OFFICIAL_DOC_NOT_FOUND` | 404 | 공문을 찾을 수 없음 |
+
+---
+
+### 13.5 공문 수정
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `PUT` |
+| **URL** | `/api/v1/official-docs/{id}` |
+| **설명** | 공문 정보를 수정합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `id` | integer | 공문 ID |
+
+**Request Body**
+
+```json
+{
+  "title": "시스템 설계 검토 요청 (수정)",
+  "approvalStatus": "APPROVED",
+  "reviewStatus": "APPROVED",
+  "content": "수정된 내용입니다."
+}
+```
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "title": "시스템 설계 검토 요청 (수정)",
+    "approvalStatus": "APPROVED",
+    "updatedAt": "2026-06-15T10:30:00Z"
+  },
+  "message": "공문이 수정되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `OFFICIAL_DOC_NOT_FOUND` | 404 | 공문을 찾을 수 없음 |
+| `ACCESS_DENIED` | 403 | 권한 없음 |
+
+---
+
+### 13.6 공문 삭제
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `DELETE` |
+| **URL** | `/api/v1/official-docs/{id}` |
+| **설명** | 공문을 삭제합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `id` | integer | 공문 ID |
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "공문이 삭제되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `OFFICIAL_DOC_NOT_FOUND` | 404 | 공문을 찾을 수 없음 |
+| `ACCESS_DENIED` | 403 | 권한 없음 |
+
+---
+
+## 14. 회의록 API (MEETING)
+
+### 14.1 프로젝트 회의록 목록 조회
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `GET` |
+| **URL** | `/api/v1/projects/{projectId}/meetings` |
+| **설명** | 특정 프로젝트의 회의록 목록을 조회합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM`/`MEMBER` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `projectId` | integer | 프로젝트 ID |
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| `page` | integer | N | 0 | 페이지 번호 |
+| `size` | integer | N | 20 | 페이지당 항목 수 |
+| `meetingType` | string | N | - | 회의 유형 필터 |
+| `status` | string | N | - | 상태 필터 (`DRAFT`,`COMPLETED`,`CANCELLED`) |
+| `keyword` | string | N | - | 제목 검색어 |
+| `from` | string | N | - | 회의일 시작 (yyyy-MM-dd) |
+| `to` | string | N | - | 회의일 종료 (yyyy-MM-dd) |
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "id": 1,
+        "title": "6월 정기 회의",
+        "meetingType": "정기 회의",
+        "meetingDate": "2026-06-15T14:00:00",
+        "location": "회의실 A",
+        "status": "COMPLETED",
+        "author": { "id": 1, "name": "홍길동" },
+        "createdAt": "2026-06-15T10:00:00Z"
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 8,
+    "totalPages": 1,
+    "first": true,
+    "last": true
+  },
+  "message": "조회가 완료되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `PROJECT_NOT_FOUND` | 404 | 프로젝트를 찾을 수 없음 |
+
+---
+
+### 14.2 회의록 등록
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `POST` |
+| **URL** | `/api/v1/projects/{projectId}/meetings` |
+| **설명** | 프로젝트에 회의록을 등록합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM`/`MEMBER` |
+
+**Request Body**
+
+```json
+{
+  "title": "7월 킥오프 회의",
+  "meetingType": "킥오프",
+  "meetingDate": "2026-07-01T10:00:00",
+  "location": "대회의실",
+  "attendees": "홍길동, 김영희, 이철수",
+  "agenda": "1. 프로젝트 개요 설명\n2. 팀 소개\n3. 일정 공유",
+  "minutes": "회의록 내용..."
+}
+```
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `title` | string | Y | 회의 제목 |
+| `meetingType` | string | Y | 회의 유형 |
+| `meetingDate` | string | Y | 회의 일시 (ISO 8601) |
+| `location` | string | N | 회의 장소 |
+| `attendees` | string | N | 참석자 목록 |
+| `agenda` | string | N | 회의 안건 |
+| `minutes` | string | N | 회의록 내용 |
+
+**Response Body (201)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "title": "7월 킥오프 회의",
+    "meetingType": "킥오프",
+    "meetingDate": "2026-07-01T10:00:00",
+    "status": "DRAFT",
+    "createdAt": "2026-06-15T10:30:00Z"
+  },
+  "message": "회의록이 등록되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `PROJECT_NOT_FOUND` | 404 | 프로젝트를 찾을 수 없음 |
+| `VALIDATION_ERROR` | 422 | 입력값 유효성 오류 |
+
+---
+
+### 14.3 전체 회의록 목록 조회
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `GET` |
+| **URL** | `/api/v1/meetings` |
+| **설명** | 전체 회의록 목록을 조회합니다. 프로젝트, 검색어 등으로 필터링 가능합니다. |
+| **권한** | `ADMIN`, `PM` |
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|----------|------|------|--------|------|
+| `page` | integer | N | 0 | 페이지 번호 |
+| `size` | integer | N | 20 | 페이지당 항목 수 |
+| `projectId` | integer | N | - | 프로젝트 필터 |
+| `keyword` | string | N | - | 제목/안건 검색어 |
+| `from` | string | N | - | 회의일 시작 |
+| `to` | string | N | - | 회의일 종료 |
+
+**Response Body (200)**: 14.1과 동일한 페이징 형식
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `ACCESS_DENIED` | 403 | 권한 없음 |
+
+---
+
+### 14.4 회의록 상세 조회
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `GET` |
+| **URL** | `/api/v1/meetings/{id}` |
+| **설명** | 회의록 상세 정보를 조회합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM`/`MEMBER` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `id` | integer | 회의록 ID |
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "project": { "id": 10, "name": "ERP 시스템 구축" },
+    "title": "7월 킥오프 회의",
+    "meetingType": "킥오프",
+    "meetingDate": "2026-07-01T10:00:00",
+    "location": "대회의실",
+    "attendees": "홍길동, 김영희, 이철수",
+    "agenda": "1. 프로젝트 개요 설명\n2. 팀 소개\n3. 일정 공유",
+    "minutes": "회의록 내용...",
+    "status": "COMPLETED",
+    "author": { "id": 1, "name": "홍길동" },
+    "createdAt": "2026-06-15T10:30:00Z",
+    "updatedAt": "2026-07-01T16:00:00Z"
+  },
+  "message": "조회가 완료되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `MEETING_NOT_FOUND` | 404 | 회의록을 찾을 수 없음 |
+
+---
+
+### 14.5 회의록 수정
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `PUT` |
+| **URL** | `/api/v1/meetings/{id}` |
+| **설명** | 회의록 정보를 수정합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM`, 작성자 |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `id` | integer | 회의록 ID |
+
+**Request Body**
+
+```json
+{
+  "title": "7월 킥오프 회의 (최종)",
+  "minutes": "최종 회의록 내용...",
+  "status": "COMPLETED"
+}
+```
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 10,
+    "title": "7월 킥오프 회의 (최종)",
+    "status": "COMPLETED",
+    "updatedAt": "2026-07-01T16:00:00Z"
+  },
+  "message": "회의록이 수정되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `MEETING_NOT_FOUND` | 404 | 회의록을 찾을 수 없음 |
+| `ACCESS_DENIED` | 403 | 권한 없음 |
+
+---
+
+### 14.6 회의록 삭제
+
+| 항목 | 내용 |
+|------|------|
+| **Method** | `DELETE` |
+| **URL** | `/api/v1/meetings/{id}` |
+| **설명** | 회의록을 삭제합니다. |
+| **권한** | `ADMIN`, 해당 프로젝트 `PM` |
+
+**Path Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|----------|------|------|
+| `id` | integer | 회의록 ID |
+
+**Response Body (200)**
+
+```json
+{
+  "success": true,
+  "data": null,
+  "message": "회의록이 삭제되었습니다.",
+  "timestamp": "2026-06-15T10:30:00Z"
+}
+```
+
+**오류 코드**
+
+| 코드 | HTTP | 설명 |
+|------|------|------|
+| `MEETING_NOT_FOUND` | 404 | 회의록을 찾을 수 없음 |
+| `ACCESS_DENIED` | 403 | 권한 없음 |
 
 ---
 
