@@ -1,6 +1,6 @@
 # PMS 화면 설계서 (Screen Design Document)
 
-> 프로젝트: OKE PMS (Project Management System)  
+> 프로젝트: AetherPMO (Project Management System)  
 > 프론트엔드: Vue 3 + TypeScript  
 > 작성일: 2026-06-15  
 > 버전: 1.0
@@ -152,7 +152,7 @@ PMS
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│ [≡] [OKE PMS 로고]   [▼ 2024-스마트팩토리구축사업]        [🔔 5] [김철수 ▼] │
+│ [≡] [AetherPMO 로고]   [▼ 2024-스마트팩토리구축사업]        [🔔 5] [김철수 ▼] │
 │                                                               ↑배지숫자   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -162,7 +162,7 @@ PMS
 | 요소 | 설명 | 비고 |
 |------|------|------|
 | 사이드바 토글 버튼 (≡) | 사이드바 펼침/접힘 | 좌측 고정 |
-| 로고 | OKE PMS 텍스트 로고 또는 이미지 | 클릭 시 대시보드 이동 |
+| 로고 | AetherPMO 텍스트 로고 또는 이미지 | 클릭 시 대시보드 이동 |
 | 프로젝트 선택 드롭다운 | 접근 가능한 프로젝트 목록 표시 | 선택 시 해당 프로젝트 컨텍스트 전환 |
 | 알림 아이콘 | 벨 아이콘 + 읽지 않은 알림 배지 | 빨간 원형 배지, 최대 99+ 표시 |
 | 사용자 메뉴 | 사용자명 + 드롭다운 | 내 프로필, 비밀번호 변경, 로그아웃 |
@@ -427,7 +427,7 @@ interface Props {
 │                                                                         │
 │                   ┌──────────────────────────────┐                     │
 │                   │                              │                     │
-│                   │       OKE PMS                │                     │
+│                   │       AetherPMO                │                     │
 │                   │   프로젝트 관리 시스템        │                     │
 │                   │                              │                     │
 │                   │  ┌────────────────────────┐  │                     │
@@ -1740,7 +1740,7 @@ const routes = [
     component: () => import('@/views/auth/LoginView.vue'),
     meta: {
       requiresAuth: false,
-      title: '로그인 | OKE PMS',
+      title: '로그인 | AetherPMO',
     },
   },
   {
@@ -1753,7 +1753,7 @@ const routes = [
         component: () => import('@/views/dashboard/PmDashboardView.vue'),
         meta: {
           roles: ['ADMIN', 'PM', 'PMO'],
-          title: 'PM 대시보드 | OKE PMS',
+          title: 'PM 대시보드 | AetherPMO',
           keepAlive: true,
         },
       },
@@ -1762,7 +1762,7 @@ const routes = [
         name: 'project-list',
         component: () => import('@/views/projects/ProjectListView.vue'),
         meta: {
-          title: '프로젝트 목록 | OKE PMS',
+          title: '프로젝트 목록 | AetherPMO',
           keepAlive: true,
         },
       },
@@ -1771,7 +1771,7 @@ const routes = [
         name: 'project-detail',
         component: () => import('@/views/projects/ProjectDetailView.vue'),
         meta: {
-          title: '프로젝트 상세 | OKE PMS',
+          title: '프로젝트 상세 | AetherPMO',
         },
       },
       // ... 나머지 라우트
@@ -1793,7 +1793,7 @@ const routes = [
         name: 'admin-users',
         component: () => import('@/views/admin/UsersView.vue'),
         meta: {
-          title: '사용자 관리 | OKE PMS',
+          title: '사용자 관리 | AetherPMO',
         },
       },
       // ... 나머지 관리자 라우트
@@ -1863,5 +1863,5 @@ export default router
 ---
 
 *문서 끝*  
-*작성: OKE PMS 설계팀*  
+*작성: AetherPMO 설계팀*  
 *최종 업데이트: 2026-06-15*
