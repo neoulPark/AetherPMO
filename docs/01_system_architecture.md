@@ -131,7 +131,7 @@
 │  └──────────────────────────────────────────────────────────────┘   │
 │                              │                                          │
 │  ┌───────────────────────────▼─────────────────────────────────────┐   │
-│  │              PostgreSQL 15 (Port: 5432)                         │   │
+│  │              Maria DB (Port: 5432)                         │   │
 │  │                                                                 │   │
 │  │   projects │ tasks │ deliverables │ issues │ members            │   │
 │  │   users │ companies │ timeoffs │ notifications │ activity_logs  │   │
