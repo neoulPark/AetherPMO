@@ -1,0 +1,1 @@
+import{d as s,c as a,a as r,x as o,o as t,_ as c}from"./index-Dqcu1bcU.js";const n={class:"progress-track"},l=s({__name:"ProgressBar",props:{value:{}},setup(e){return(_,d)=>(t(),a("div",n,[r("div",{class:"progress-fill",style:o({width:`${Math.min(100,Math.max(0,e.value))}%`})},null,4)]))}}),i=c(l,[["__scopeId","data-v-d9da3655"]]);export{i as P};
