@@ -251,7 +251,7 @@ Entity (JPA 엔티티, 테이블 매핑)
 ### 4.1 패키지 구조 개요
 
 ```
-com.okepms
+com.aetherpmo
 ├── config/
 ├── common/
 ├── security/
@@ -1087,12 +1087,12 @@ services:
   # PostgreSQL 데이터베이스
   postgres:
     image: postgres:15-alpine
-    container_name: okepms-postgres
+    container_name: aetherpmo-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: okepms
-      POSTGRES_USER: okepms
-      POSTGRES_PASSWORD: okepms1234!
+      POSTGRES_DB: aetherpmo
+      POSTGRES_USER: aetherpmo
+      POSTGRES_PASSWORD: aetherpmo1234!
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=ko_KR.UTF-8"
       TZ: Asia/Seoul
     ports:
@@ -1101,9 +1101,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/01_init.sql
     networks:
-      - okepms-network
+      - aetherpmo-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U okepms -d okepms"]
+      test: ["CMD-SHELL", "pg_isready -U aetherpmo -d aetherpmo"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -1113,14 +1113,14 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: okepms-backend
+    container_name: aetherpmo-backend
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: docker
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/okepms
-      SPRING_DATASOURCE_USERNAME: okepms
-      SPRING_DATASOURCE_PASSWORD: okepms1234!
-      JWT_SECRET: okepms-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/aetherpmo
+      SPRING_DATASOURCE_USERNAME: aetherpmo
+      SPRING_DATASOURCE_PASSWORD: aetherpmo1234!
+      JWT_SECRET: aetherpmo-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256
       JWT_ACCESS_TOKEN_EXPIRY: 1800000
       JWT_REFRESH_TOKEN_EXPIRY: 604800000
       FILE_UPLOAD_DIR: /app/uploads
@@ -1133,7 +1133,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - okepms-network
+      - aetherpmo-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 30s
@@ -1146,7 +1146,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: okepms-frontend
+    container_name: aetherpmo-frontend
     restart: unless-stopped
     environment:
       VITE_API_BASE_URL: http://localhost:8080/api/v1
@@ -1159,12 +1159,12 @@ services:
     depends_on:
       - backend
     networks:
-      - okepms-network
+      - aetherpmo-network
 
   # Nginx 리버스 프록시 (선택적 - 통합 테스트용)
   nginx:
     image: nginx:1.25-alpine
-    container_name: okepms-nginx
+    container_name: aetherpmo-nginx
     restart: unless-stopped
     ports:
       - "80:80"
@@ -1174,7 +1174,7 @@ services:
       - backend
       - frontend
     networks:
-      - okepms-network
+      - aetherpmo-network
     profiles:
       - prod
 
@@ -1185,7 +1185,7 @@ volumes:
     driver: local
 
 networks:
-  okepms-network:
+  aetherpmo-network:
     driver: bridge
 ```
 
@@ -1228,11 +1228,11 @@ CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
 # backend/src/main/resources/application.yml
 spring:
   application:
-    name: okepms
+    name: aetherpmo
   datasource:
-    url: jdbc:postgresql://localhost:5432/okepms
-    username: okepms
-    password: okepms1234!
+    url: jdbc:postgresql://localhost:5432/aetherpmo
+    username: aetherpmo
+    password: aetherpmo1234!
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 10
@@ -1258,7 +1258,7 @@ server:
     context-path: /api/v1
 
 jwt:
-  secret: ${JWT_SECRET:okepms-local-dev-secret-key-256bits-placeholder}
+  secret: ${JWT_SECRET:aetherpmo-local-dev-secret-key-256bits-placeholder}
   access-token-expiry: 1800000
   refresh-token-expiry: 604800000
 
@@ -1268,7 +1268,7 @@ file:
 
 logging:
   level:
-    com.okepms: DEBUG
+    com.aetherpmo: DEBUG
     org.springframework.security: INFO
 
 management:
@@ -1321,7 +1321,7 @@ docker-compose down -v
 ### 10.1 프로젝트 루트 구조
 
 ```
-okepms/
+aetherpmo/
 ├── backend/                    # Spring Boot 백엔드
 ├── frontend/                   # Vue 3 프론트엔드
 ├── docs/                       # 프로젝트 문서
@@ -1351,8 +1351,8 @@ backend/
     ├── main/
     │   ├── java/
     │   │   └── com/
-    │   │       └── okepms/
-    │   │           ├── OkePmsApplication.java
+    │   │       └── aetherpmo/
+    │   │           ├── AetherPmoApplication.java
     │   │           ├── config/
     │   │           │   ├── SecurityConfig.java
     │   │           │   ├── CorsConfig.java
@@ -1518,7 +1518,7 @@ backend/
     │           ├── V2__seed_data.sql
     │           └── V3__add_indexes.sql
     └── test/
-        └── java/com/okepms/
+        └── java/com/aetherpmo/
             ├── domain/
             │   ├── auth/AuthServiceTest.java
             │   ├── project/ProjectServiceTest.java
