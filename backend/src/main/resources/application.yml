@@ -6,6 +6,10 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:aetherpmo}
     password: ${SPRING_DATASOURCE_PASSWORD:aetherpmo1234!}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 15000        # 15s 내 연결 못 얻으면 에러
+      initialization-fail-timeout: 15000  # 시작 시 빠르게 실패 (무한 hang 방지)
+      validation-timeout: 5000
   jpa:
     hibernate:
       ddl-auto: validate

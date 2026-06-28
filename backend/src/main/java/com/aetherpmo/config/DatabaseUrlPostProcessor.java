@@ -53,8 +53,11 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
             }
             int port = uri.getPort() == -1 ? 5432 : uri.getPort();
             String jdbc = "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath();
-            // sslmode=prefer: SSL 지원 시 SSL 사용, 미지원 시 평문 — 내부/외부 모두 안전
-            jdbc += (uri.getQuery() != null) ? "?" + uri.getQuery() : "?sslmode=prefer";
+            // 접속/소켓 타임아웃을 둬서 무한 hang 방지 (연결 불가 시 빠르게 에러)
+            // sslmode=prefer: SSL 지원 시 SSL, 미지원 시 평문 — 내부/외부 모두 안전
+            String extra = "sslmode=prefer&connectTimeout=15&socketTimeout=30";
+            jdbc += (uri.getQuery() != null) ? "?" + uri.getQuery() + "&connectTimeout=15&socketTimeout=30"
+                                             : "?" + extra;
 
             Map<String, Object> props = new HashMap<>();
             props.put("spring.datasource.url", jdbc);
