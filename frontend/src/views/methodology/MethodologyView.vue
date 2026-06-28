@@ -95,15 +95,8 @@
               </div>
 
               <div class="wf-section">
-                <label class="wf-label">전이(transition)</label>
-                <div class="trans-list">
-                  <div v-for="t in activeWorkflow.transitions" :key="t.transitionId" class="trans-row">
-                    <span class="chip sm" :style="chipStyle(statusColor(t.fromStatusId))">{{ statusName(t.fromStatusId) }}</span>
-                    <span class="arrow">→</span>
-                    <span class="chip sm" :style="chipStyle(statusColor(t.toStatusId))">{{ statusName(t.toStatusId) }}</span>
-                  </div>
-                  <div v-if="!activeWorkflow.transitions.length" class="wf-hint sm">등록된 전이가 없습니다.</div>
-                </div>
+                <label class="wf-label">워크플로 다이어그램</label>
+                <WorkflowDiagram :workflow="activeWorkflow" />
               </div>
 
               <div class="wf-section">
@@ -138,6 +131,11 @@
     <!-- Workflow edit dialog -->
     <el-dialog v-model="wfDialogVisible" title="워크플로 편집" width="640px">
       <template v-if="editWorkflow">
+        <div class="wf-edit-section">
+          <label class="wf-label">미리보기</label>
+          <WorkflowDiagram :workflow="editWorkflow" />
+        </div>
+
         <div class="wf-edit-section">
           <label class="wf-label">워크플로 이름</label>
           <div class="inline-row">
@@ -222,6 +220,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import WorkflowDiagram from '@/components/workflow/WorkflowDiagram.vue'
 import {
   getCatalog,
   createNode,
@@ -351,13 +350,6 @@ const sortedStatuses = computed(() =>
     ? [...activeWorkflow.value.statuses].sort((a, b) => a.sortOrder - b.sortOrder)
     : []
 )
-
-function statusName(id: number): string {
-  return activeWorkflow.value?.statuses.find((s) => s.statusId === id)?.name ?? '?'
-}
-function statusColor(id: number): string {
-  return activeWorkflow.value?.statuses.find((s) => s.statusId === id)?.color ?? '#4a5568'
-}
 
 function chipStyle(color: string) {
   return { background: color, color: readableText(color) }
