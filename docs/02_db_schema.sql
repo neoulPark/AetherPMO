@@ -628,56 +628,13 @@ CREATE TRIGGER trg_pms_activity_log_immutable
     FOR EACH ROW EXECUTE FUNCTION fn_deny_actlog_update();
 
 -- -----------------------------------------------------------------------------
--- 2.16 PMS_DOCUMENT_TEMPLATE (문서 템플릿)
+-- 2.16 / 2.17 [폐기됨] PMS_DOCUMENT_TEMPLATE, PMS_TEMPLATE_TAG_MAPPING
 -- -----------------------------------------------------------------------------
-CREATE TABLE pms_document_template (
-    template_id     BIGSERIAL       PRIMARY KEY,
-    template_name   VARCHAR(200)    NOT NULL,
-    template_type   VARCHAR(50),
-    description     TEXT,
-    template_tags   JSONB,
-    file_path       VARCHAR(500),
-    is_active       BOOLEAN         NOT NULL DEFAULT true,
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP,
-    created_by      BIGINT,
-    updated_by      BIGINT
-);
-
-COMMENT ON TABLE  pms_document_template              IS '문서 템플릿';
-COMMENT ON COLUMN pms_document_template.template_type IS '템플릿 유형 (예: 계획서, 보고서, 회의록)';
-COMMENT ON COLUMN pms_document_template.template_tags IS '사용 태그 목록 JSON 배열 (예: ["PROJECT_NAME","PM_NAME"])';
-COMMENT ON COLUMN pms_document_template.file_path    IS '템플릿 파일 저장 경로';
-
-CREATE TRIGGER trg_pms_document_template_updated_at
-    BEFORE UPDATE ON pms_document_template
-    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
-
+-- 문서 템플릿/태그 매핑 테이블은 OPMS 방법론 카탈로그로 통합되어 폐기되었다.
+--   - pms_document_template   → pms_deliverable_template (file_path/template_tags 흡수)
+--   - pms_template_tag_mapping → pms_deliverable_tag_mapping 로 대체
+-- 정의 및 시드는 docs/05_methodology_catalog.sql 참조.
 -- -----------------------------------------------------------------------------
--- 2.17 PMS_TEMPLATE_TAG_MAPPING (템플릿 태그 매핑)
--- -----------------------------------------------------------------------------
-CREATE TABLE pms_template_tag_mapping (
-    mapping_id      BIGSERIAL       PRIMARY KEY,
-    template_id     BIGINT          NOT NULL
-                        CONSTRAINT fk_tagmap_template
-                        REFERENCES pms_document_template(template_id)
-                        ON DELETE CASCADE,
-    tag_name        VARCHAR(100)    NOT NULL,
-    data_source     VARCHAR(100)    NOT NULL,
-    description     VARCHAR(300),
-    created_at      TIMESTAMP       NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMP,
-    created_by      BIGINT,
-    updated_by      BIGINT
-);
-
-COMMENT ON TABLE  pms_template_tag_mapping             IS '문서 템플릿 태그 매핑';
-COMMENT ON COLUMN pms_template_tag_mapping.tag_name    IS '템플릿 내 태그명 (예: PROJECT_NAME, PM_NAME)';
-COMMENT ON COLUMN pms_template_tag_mapping.data_source IS '데이터 소스 경로 (예: pms_project.project_name)';
-
-CREATE TRIGGER trg_pms_template_tag_mapping_updated_at
-    BEFORE UPDATE ON pms_template_tag_mapping
-    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
 -- =============================================
 -- 18. PMS_MEETING (회의록)
@@ -854,13 +811,8 @@ CREATE INDEX idx_actlog_performed   ON pms_activity_log (performed_by);
 CREATE INDEX idx_actlog_created     ON pms_activity_log (created_at DESC);
 CREATE INDEX idx_actlog_action      ON pms_activity_log (action);
 
--- PMS_DOCUMENT_TEMPLATE
-CREATE INDEX idx_template_type      ON pms_document_template (template_type);
-CREATE INDEX idx_template_active    ON pms_document_template (is_active);
-
--- PMS_TEMPLATE_TAG_MAPPING
-CREATE INDEX idx_tagmap_template    ON pms_template_tag_mapping (template_id);
-CREATE INDEX idx_tagmap_tag_name    ON pms_template_tag_mapping (tag_name);
+-- PMS_DOCUMENT_TEMPLATE / PMS_TEMPLATE_TAG_MAPPING : 폐기됨
+--   → docs/05_methodology_catalog.sql (pms_deliverable_template 등) 참조
 
 -- =============================================================================
 -- 4. SEED DATA

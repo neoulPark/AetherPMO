@@ -51,10 +51,21 @@ PostgreSQL을 기반으로 설계되었으며, 프로젝트·업무·이슈·산
 | 13 | PMS_NOTIFICATION_RULE | 알림 규칙 |
 | 14 | PMS_NOTIFICATION | 알림 |
 | 15 | PMS_ACTIVITY_LOG | 활동 로그 |
-| 16 | PMS_DOCUMENT_TEMPLATE | 문서 템플릿 |
-| 17 | PMS_TEMPLATE_TAG_MAPPING | 템플릿 태그 매핑 |
+| 16 | ~~PMS_DOCUMENT_TEMPLATE~~ | **폐기** → OPMS 카탈로그(pms_deliverable_template)로 통합 |
+| 17 | ~~PMS_TEMPLATE_TAG_MAPPING~~ | **폐기** → pms_deliverable_tag_mapping로 대체 |
 | 18 | PMS_MEETING | 회의록 관리 |
 | 19 | PMS_OFFICIAL_DOC | 공문(수발신) 관리 |
+
+#### OPMS 표준 방법론 카탈로그 (별도 문서: 05_methodology_catalog)
+
+| 번호 | 테이블명 | 설명 |
+|------|----------|------|
+| C1 | PMS_METHODOLOGY_PHASE | 방법론 단계 (PRR/PRP/PPC/PED) |
+| C2 | PMS_METHODOLOGY_ACTIVITY | 방법론 활동 (OP/PW/CT/TL/PM/CM/SM/IM/EE/IE) |
+| C3 | PMS_TASK_TEMPLATE | Task 템플릿 (세부활동) |
+| C4 | PMS_DELIVERABLE_TEMPLATE | 산출물 템플릿 (문서 자동화 통합) |
+| C4-1 | PMS_DELIVERABLE_TAG_MAPPING | 산출물 템플릿 태그 매핑 |
+| C5 | PMS_PROJECT_TAILORING | 프로젝트 테일러링 선택 내역 |
 
 ---
 
@@ -143,23 +154,16 @@ PostgreSQL을 기반으로 설계되었으며, 프로젝트·업무·이슈·산
   └──────────────────┘       │ entity_id            │
                              └──────────────────────┘
 
-  PMS_ACTIVITY_LOG           PMS_DOCUMENT_TEMPLATE
-  ┌──────────────────┐       ┌──────────────────────┐
-  │ log_id PK        │       │ template_id PK       │
-  │ entity_type      │       │ template_name        │
-  │ entity_id        │       │ template_type        │
-  │ project_id FK    │       │ template_tags (JSONB)│
-  │ action           │       │ is_active            │
-  │ performed_by FK  │       └──────────┬───────────┘
-  │ details (JSONB)  │                  │ 1
-  └──────────────────┘                  │ N
-                             ┌──────────▼───────────┐
-                             │PMS_TEMPLATE_TAG_MAPPING│
-                             │ mapping_id PK        │
-                             │ template_id FK       │
-                             │ tag_name             │
-                             │ data_source          │
-                             └──────────────────────┘
+  PMS_ACTIVITY_LOG
+  ┌──────────────────┐
+  │ log_id PK        │
+  │ entity_type      │       ※ 문서 템플릿 계열(PMS_DOCUMENT_TEMPLATE,
+  │ entity_id        │          PMS_TEMPLATE_TAG_MAPPING)은 폐기되어
+  │ project_id FK    │          OPMS 방법론 카탈로그로 통합됨.
+  │ action           │          → 05_methodology_catalog 참조
+  │ performed_by FK  │
+  │ details (JSONB)  │
+  └──────────────────┘
 
   PMS_TASK_ASSIGNMENT_HISTORY
   ┌─────────────────────────┐
@@ -567,37 +571,19 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 
 ---
 
-### 4.16 PMS_DOCUMENT_TEMPLATE (문서 템플릿)
+### 4.16 PMS_DOCUMENT_TEMPLATE (문서 템플릿) — **폐기됨**
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| template_id | BIGSERIAL | PK | 템플릿 고유 ID |
-| template_name | VARCHAR(200) | NOT NULL | 템플릿명 |
-| template_type | VARCHAR(50) | | 템플릿 유형 (계획서/보고서/회의록 등) |
-| description | TEXT | | 템플릿 설명 |
-| template_tags | JSONB | | 사용 태그 목록 (예: ["PROJECT_NAME","PM_NAME"]) |
-| file_path | VARCHAR(500) | | 템플릿 파일 경로 |
-| is_active | BOOLEAN | DEFAULT true | 활성 여부 |
-| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
-| updated_at | TIMESTAMP | | 수정일시 |
-| created_by | BIGINT | | 생성자 |
-| updated_by | BIGINT | | 수정자 |
+> OPMS 표준 방법론 카탈로그 도입으로 폐기되었다.
+> 문서 자동화(태그 치환) 기능은 `PMS_DELIVERABLE_TEMPLATE`의
+> `file_path` / `file_name` / `template_tags` 컬럼으로 흡수되었다.
+> 상세 정의는 `05_methodology_catalog`(C4) 참조.
 
 ---
 
-### 4.17 PMS_TEMPLATE_TAG_MAPPING (템플릿 태그 매핑)
+### 4.17 PMS_TEMPLATE_TAG_MAPPING (템플릿 태그 매핑) — **폐기됨**
 
-| 컬럼명 | 타입 | 제약조건 | 설명 |
-|--------|------|----------|------|
-| mapping_id | BIGSERIAL | PK | 매핑 고유 ID |
-| template_id | BIGINT | FK→PMS_DOCUMENT_TEMPLATE NOT NULL | 템플릿 |
-| tag_name | VARCHAR(100) | NOT NULL | 태그명 (예: PROJECT_NAME) |
-| data_source | VARCHAR(100) | NOT NULL | 데이터 소스 (예: pms_project.project_name) |
-| description | VARCHAR(300) | | 태그 설명 |
-| created_at | TIMESTAMP | DEFAULT NOW() | 생성일시 |
-| updated_at | TIMESTAMP | | 수정일시 |
-| created_by | BIGINT | | 생성자 |
-| updated_by | BIGINT | | 수정자 |
+> `PMS_DELIVERABLE_TAG_MAPPING`(C4-1)로 대체되었다.
+> 상세 정의는 `05_methodology_catalog` 참조.
 
 ---
 
@@ -696,7 +682,7 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 | idx_actlog_project | PMS_ACTIVITY_LOG | project_id | BTREE | 프로젝트별 로그 |
 | idx_actlog_performed | PMS_ACTIVITY_LOG | performed_by | BTREE | 수행자별 로그 |
 | idx_actlog_created | PMS_ACTIVITY_LOG | created_at | BTREE | 시간순 로그 조회 |
-| idx_template_tag | PMS_TEMPLATE_TAG_MAPPING | template_id | BTREE | 템플릿별 태그 조회 |
+| (방법론 카탈로그 인덱스는 05_methodology_catalog 참조) | — | — | — | — |
 
 ### 5.2 부분 인덱스 (Partial Index)
 
@@ -757,8 +743,11 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 - `details JSONB`로 변경 전후 값 등 상세 정보 보관
 - 불변(append-only) 테이블: updated_at, updated_by 없음
 
-### 6.9 문서 템플릿 ↔ 태그 매핑
-- PMS_DOCUMENT_TEMPLATE: 문서 템플릿 파일과 메타데이터 관리
-- PMS_TEMPLATE_TAG_MAPPING: 템플릿 내 치환 태그와 실제 데이터 소스 매핑
-- `data_source`: "pms_project.project_name" 형식으로 자동 치환 경로 정의
-- `template_tags JSONB`: 템플릿에서 사용하는 태그 목록 빠른 참조용
+### 6.9 OPMS 방법론 카탈로그 ↔ 프로젝트 테일러링
+- 표준 방법론 카탈로그(C1~C4-1)는 마스터 데이터로, 단계→활동→Task템플릿→산출물템플릿 4계층 구성
+- 신규 프로젝트 생성 시 PMS_PROJECT_TAILORING(C5)에 채택/제외 내역을 기록(테일러링)
+- 채택된 Task템플릿/산출물템플릿은 실제 PMS_TASK / PMS_DELIVERABLE로 인스턴스화
+  (PMS_TASK.task_template_id, PMS_DELIVERABLE.deliverable_template_id로 출처 추적)
+- 문서 자동화(태그 치환)는 PMS_DELIVERABLE_TEMPLATE의 file_path/template_tags +
+  PMS_DELIVERABLE_TAG_MAPPING(data_source: "pms_project.project_name" 형식)로 통합 관리
+- 상세 정의는 별도 문서 `05_methodology_catalog` 참조
