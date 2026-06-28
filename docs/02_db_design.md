@@ -55,6 +55,7 @@ PostgreSQL을 기반으로 설계되었으며, 프로젝트·업무·이슈·산
 | 17 | ~~PMS_TEMPLATE_TAG_MAPPING~~ | **폐기** → pms_deliverable_tag_mapping로 대체 |
 | 18 | PMS_MEETING | 회의록 관리 |
 | 19 | PMS_OFFICIAL_DOC | 공문(수발신) 관리 |
+| 20 | PMS_ATTACHMENT | 공통 첨부 (아마란스 파일 참조, MSA) |
 
 #### OPMS 표준 방법론 카탈로그 (별도 문서: 05_methodology_catalog)
 
@@ -388,9 +389,7 @@ TODO → IN_PROGRESS → REVIEW → DONE
 | deliverable_type | VARCHAR(50) | | 산출물 유형 (설계서/보고서/계획서 등) |
 | status | VARCHAR(20) | CHECK ('DRAFT','SUBMITTED','UNDER_REVIEW','APPROVED','REJECTED') | 산출물 상태 |
 | version_no | VARCHAR(20) | DEFAULT '1.0' | 버전 번호 |
-| file_path | VARCHAR(500) | | 파일 저장 경로 |
-| file_name | VARCHAR(300) | | 원본 파일명 |
-| file_size | BIGINT | | 파일 크기(bytes) |
+| ~~file_path/file_name/file_size~~ | | | **첨부는 PMS_ATTACHMENT(N:1)로 관리** — 아마란스 file_ref 참조. 단일 인라인 컬럼은 폐기 |
 | submitted_by | BIGINT | FK→PMS_USER | 제출자 |
 | submitted_at | TIMESTAMP | | 제출 일시 |
 | reviewed_by | BIGINT | FK→PMS_USER | 검토자 |
@@ -575,7 +574,7 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 
 > OPMS 표준 방법론 카탈로그 도입으로 폐기되었다.
 > 문서 자동화(태그 치환) 기능은 `PMS_DELIVERABLE_TEMPLATE`의
-> `file_path` / `file_name` / `template_tags` 컬럼으로 흡수되었다.
+> `template_file_ref` / `file_name` / `template_tags` 컬럼으로 흡수되었다.
 > 상세 정의는 `05_methodology_catalog`(C4) 참조.
 
 ---
@@ -748,6 +747,6 @@ DRAFT → SUBMITTED → UNDER_REVIEW → APPROVED
 - 신규 프로젝트 생성 시 PMS_PROJECT_TAILORING(C5)에 채택/제외 내역을 기록(테일러링)
 - 채택된 Task템플릿/산출물템플릿은 실제 PMS_TASK / PMS_DELIVERABLE로 인스턴스화
   (PMS_TASK.task_template_id, PMS_DELIVERABLE.deliverable_template_id로 출처 추적)
-- 문서 자동화(태그 치환)는 PMS_DELIVERABLE_TEMPLATE의 file_path/template_tags +
+- 문서 자동화(태그 치환)는 PMS_DELIVERABLE_TEMPLATE의 template_file_ref/template_tags +
   PMS_DELIVERABLE_TAG_MAPPING(data_source: "pms_project.project_name" 형식)로 통합 관리
 - 상세 정의는 별도 문서 `05_methodology_catalog` 참조

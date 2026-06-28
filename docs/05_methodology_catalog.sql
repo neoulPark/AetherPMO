@@ -100,8 +100,8 @@ CREATE TABLE pms_deliverable_template (
     is_optional     BOOLEAN         NOT NULL DEFAULT FALSE,  -- (선택) 표기 산출물
     default_selected BOOLEAN        NOT NULL DEFAULT TRUE,
     -- 문서 자동화(태그 치환) : 구 pms_document_template 흡수
-    file_path       VARCHAR(500),                         -- 표준 템플릿 파일 경로
-    file_name       VARCHAR(300),                         -- 다운로드 파일명
+    template_file_ref VARCHAR(200),                       -- 표준 양식 파일 (아마란스 file_id, 1개)
+    file_name       VARCHAR(300),                         -- 다운로드 파일명(표시용)
     template_tags   JSONB,                                -- 사용 태그 목록 (예: ["PROJECT_NAME","PM_NAME"])
     sort_order      INT             NOT NULL DEFAULT 0,
     is_active       BOOLEAN         NOT NULL DEFAULT TRUE,

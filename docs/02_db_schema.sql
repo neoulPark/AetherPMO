@@ -707,6 +707,36 @@ CREATE INDEX idx_pms_official_doc_no ON pms_official_doc(doc_no);
 CREATE INDEX idx_pms_official_doc_approval ON pms_official_doc(approval_status);
 CREATE INDEX idx_pms_official_doc_direction ON pms_official_doc(direction);
 
+-- =============================================
+-- 20. PMS_ATTACHMENT (공통 첨부 — 아마란스 파일 참조)
+-- =============================================
+-- 산출물/공문/회의록 등 여러 엔티티가 공유하는 다형(polymorphic) 첨부.
+-- 파일 바이너리는 아마란스에 저장되며, 우리 DB는 file_ref와 표시용 메타만 보관한다.
+CREATE TABLE pms_attachment (
+    attachment_id   BIGSERIAL PRIMARY KEY,
+    entity_type     VARCHAR(30)  NOT NULL,   -- 'DELIVERABLE' | 'OFFICIAL_DOC' | 'MEETING' | ...
+    entity_id       BIGINT       NOT NULL,   -- 대상 엔티티 ID
+    file_ref        VARCHAR(200) NOT NULL,   -- 아마란스 file_id (원천 키)
+    file_name       VARCHAR(300),            -- 표시용 캐시
+    file_size       BIGINT,                  -- 표시용 캐시
+    content_type    VARCHAR(100),
+    sort_order      INT          NOT NULL DEFAULT 0,
+    uploaded_by     VARCHAR(100),            -- 아마란스 user subject
+    uploaded_at     TIMESTAMP    DEFAULT NOW(),
+    created_at      TIMESTAMP    DEFAULT NOW(),
+    updated_at      TIMESTAMP    DEFAULT NOW()
+);
+COMMENT ON TABLE  pms_attachment IS '공통 첨부 (아마란스 파일 참조, 바이너리 미보관)';
+COMMENT ON COLUMN pms_attachment.entity_type IS '첨부 대상 엔티티 유형 (DELIVERABLE/OFFICIAL_DOC/MEETING 등)';
+COMMENT ON COLUMN pms_attachment.file_ref IS '아마란스 file_id (원천 키)';
+
+CREATE TRIGGER trg_pms_attachment_updated_at
+    BEFORE UPDATE ON pms_attachment
+    FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
+
+CREATE INDEX idx_pms_attachment_entity ON pms_attachment(entity_type, entity_id);
+CREATE INDEX idx_pms_attachment_fileref ON pms_attachment(file_ref);
+
 -- =============================================================================
 -- 3. INDEXES
 -- =============================================================================
