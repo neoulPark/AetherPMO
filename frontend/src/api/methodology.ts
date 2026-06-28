@@ -1,31 +1,38 @@
 import api from '@/api/axios'
 import type { ProjectDto } from '@/api/projects'
 
-export interface DeliverableTemplate {
-  deliverableTemplateId: number
-  seqNo: number
-  deliverableName: string
+export type NodeType = 'PHASE' | 'ACTIVITY' | 'TASK' | 'DELIVERABLE'
+
+export interface CatalogNode {
+  nodeId: number
+  parentNodeId: number | null
+  nodeType: NodeType
+  code: string | null
+  name: string
   isOptional: boolean
+  seqNo: number | null
+  sortOrder: number | null
+  children: CatalogNode[]
 }
 
-export interface TaskTemplate {
-  taskTemplateId: number
-  taskCode: string
-  taskName: string
-  isOptional: boolean
-  deliverables: DeliverableTemplate[]
+export interface CreateNodePayload {
+  parentNodeId: number | null
+  nodeType: NodeType
+  code?: string | null
+  name: string
+  isOptional?: boolean
+  sortOrder?: number | null
+  seqNo?: number | null
+  deliverableCategory?: string | null
+  stage?: string | null
 }
 
-export interface Activity {
-  activityCode: string
-  activityName: string
-  tasks: TaskTemplate[]
-}
-
-export interface Phase {
-  phaseCode: string
-  phaseName: string
-  activities: Activity[]
+export interface UpdateNodePayload {
+  name?: string
+  code?: string | null
+  isOptional?: boolean
+  sortOrder?: number | null
+  description?: string | null
 }
 
 export interface CreateProjectWithTailoringPayload {
@@ -40,13 +47,29 @@ export interface CreateProjectWithTailoringPayload {
   plannedEndDate: string | null
   contractAmount: number | null
   riskLevel: string
-  selectedTaskTemplateIds: number[]
-  selectedDeliverableTemplateIds: number[]
+  selectedNodeIds: number[]
 }
 
-export async function getCatalog(): Promise<Phase[]> {
+export async function getCatalog(): Promise<CatalogNode[]> {
   const res = await api.get('/methodology/catalog')
   return res.data.data
+}
+
+export async function createNode(payload: CreateNodePayload): Promise<CatalogNode> {
+  const res = await api.post('/methodology/nodes', payload)
+  return res.data.data
+}
+
+export async function updateNode(
+  id: number,
+  payload: UpdateNodePayload
+): Promise<CatalogNode> {
+  const res = await api.put(`/methodology/nodes/${id}`, payload)
+  return res.data.data
+}
+
+export async function deleteNode(id: number): Promise<void> {
+  await api.delete(`/methodology/nodes/${id}`)
 }
 
 export async function createProjectWithTailoring(

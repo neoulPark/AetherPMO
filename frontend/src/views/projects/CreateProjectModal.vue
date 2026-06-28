@@ -87,19 +87,23 @@
 
           <div v-if="catalogLoading" class="loading-state">카탈로그 불러오는 중...</div>
           <div v-else class="tree-area">
-            <CatalogTree
-              :phases="phases"
-              selectable
-              :checked-tasks="checkedTasks"
-              :checked-deliverables="checkedDeliverables"
-              @toggle-task="onToggleTask"
-              @toggle-deliverable="onToggleDeliverable"
-              @toggle-activity="onToggleActivity"
-              @toggle-phase="onTogglePhase"
-            />
-          </div>
-          <div class="select-summary">
-            선택: 업무 {{ checkedTasks.size }}개 · 산출물 {{ checkedDeliverables.size }}개
+            <el-tree
+              ref="treeRef"
+              :data="catalog"
+              node-key="nodeId"
+              show-checkbox
+              :props="{ label: 'name', children: 'children' }"
+              :default-checked-keys="allKeys"
+            >
+              <template #default="{ data }">
+                <span class="tree-row">
+                  <span class="type-badge">{{ TYPE_LABELS[data.nodeType as NodeType] }}</span>
+                  <span v-if="data.code" class="code">[{{ data.code }}]</span>
+                  <span class="name">{{ data.name }}</span>
+                  <span v-if="data.isOptional" class="opt-badge">선택</span>
+                </span>
+              </template>
+            </el-tree>
           </div>
         </section>
       </div>
@@ -115,27 +119,56 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElTree } from 'element-plus'
 import {
   getCatalog,
   createProjectWithTailoring,
-  type Phase,
-  type Activity,
-  type TaskTemplate,
-  type DeliverableTemplate,
+  type CatalogNode,
+  type NodeType,
 } from '@/api/methodology'
-import CatalogTree from '@/components/methodology/CatalogTree.vue'
 
 const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void }>()
 const router = useRouter()
 
-const phases = ref<Phase[]>([])
+const catalog = ref<CatalogNode[]>([])
 const catalogLoading = ref(false)
 const saving = ref(false)
 
-const checkedTasks = ref<Set<number>>(new Set())
-const checkedDeliverables = ref<Set<number>>(new Set())
+const treeRef = ref<InstanceType<typeof ElTree>>()
+
+const TYPE_LABELS: Record<NodeType, string> = {
+  PHASE: '단계',
+  ACTIVITY: '활동',
+  TASK: '업무',
+  DELIVERABLE: '산출물',
+}
+
+const allKeys = ref<number[]>([])
+function collectKeys(nodes: CatalogNode[]): number[] {
+  const ids: number[] = []
+  const walk = (ns: CatalogNode[]) => {
+    for (const n of ns) {
+      ids.push(n.nodeId)
+      if (n.children?.length) walk(n.children)
+    }
+  }
+  walk(nodes)
+  return ids
+}
+
+const allSelected = ref(true)
+function toggleAll() {
+  if (!treeRef.value) return
+  if (allSelected.value) {
+    treeRef.value.setCheckedKeys([], false)
+    allSelected.value = false
+  } else {
+    treeRef.value.setCheckedKeys(allKeys.value, false)
+    allSelected.value = true
+  }
+}
 
 const form = ref({
   projectName: '',
@@ -151,68 +184,16 @@ const form = ref({
   riskLevel: '보통',
 })
 
-function reassign() {
-  // trigger reactivity on Set mutation
-  checkedTasks.value = new Set(checkedTasks.value)
-  checkedDeliverables.value = new Set(checkedDeliverables.value)
-}
-
-function setTask(t: TaskTemplate, checked: boolean) {
-  if (checked) {
-    checkedTasks.value.add(t.taskTemplateId)
-    t.deliverables.forEach((d) => checkedDeliverables.value.add(d.deliverableTemplateId))
-  } else {
-    checkedTasks.value.delete(t.taskTemplateId)
-    t.deliverables.forEach((d) => checkedDeliverables.value.delete(d.deliverableTemplateId))
-  }
-}
-
-function onToggleTask(t: TaskTemplate, checked: boolean) {
-  setTask(t, checked)
-  reassign()
-}
-
-function onToggleDeliverable(d: DeliverableTemplate, checked: boolean) {
-  if (checked) checkedDeliverables.value.add(d.deliverableTemplateId)
-  else checkedDeliverables.value.delete(d.deliverableTemplateId)
-  reassign()
-}
-
-function onToggleActivity(a: Activity, checked: boolean) {
-  a.tasks.forEach((t) => setTask(t, checked))
-  reassign()
-}
-
-function onTogglePhase(p: Phase, checked: boolean) {
-  p.activities.forEach((a) => a.tasks.forEach((t) => setTask(t, checked)))
-  reassign()
-}
-
-const totalTasks = computed(() =>
-  phases.value.reduce((s, p) => s + p.activities.reduce((s2, a) => s2 + a.tasks.length, 0), 0)
-)
-const allSelected = computed(
-  () => totalTasks.value > 0 && checkedTasks.value.size === totalTasks.value
-)
-
-function selectAll(checked: boolean) {
-  for (const p of phases.value)
-    for (const a of p.activities) for (const t of a.tasks) setTask(t, checked)
-  reassign()
-}
-
-function toggleAll() {
-  selectAll(!allSelected.value)
-}
-
 async function loadCatalog() {
   catalogLoading.value = true
   try {
-    phases.value = await getCatalog()
-    selectAll(true) // default: all checked
+    catalog.value = await getCatalog()
+    allKeys.value = collectKeys(catalog.value)
+    allSelected.value = true
   } catch (e) {
     console.error('Failed to load catalog', e)
-    phases.value = []
+    catalog.value = []
+    allKeys.value = []
   } finally {
     catalogLoading.value = false
   }
@@ -220,18 +201,18 @@ async function loadCatalog() {
 
 async function handleSave() {
   if (!form.value.projectName.trim()) {
-    alert('프로젝트 이름을 입력하세요.')
+    ElMessage.error('프로젝트 이름을 입력하세요.')
     return
   }
   saving.value = true
   try {
+    const checked = (treeRef.value?.getCheckedKeys() ?? []) as number[]
     const payload = {
       ...form.value,
       plannedStartDate: form.value.plannedStartDate || null,
       plannedEndDate: form.value.plannedEndDate || null,
       contractAmount: form.value.contractAmount || null,
-      selectedTaskTemplateIds: Array.from(checkedTasks.value),
-      selectedDeliverableTemplateIds: Array.from(checkedDeliverables.value),
+      selectedNodeIds: checked,
     }
     const created = await createProjectWithTailoring(payload)
     emit('created')
@@ -239,7 +220,7 @@ async function handleSave() {
     if (created?.id) router.push(`/projects/${created.id}/tasks`)
   } catch (e) {
     console.error('Failed to create project', e)
-    alert('프로젝트 생성에 실패했습니다.')
+    ElMessage.error('프로젝트 생성에 실패했습니다.')
   } finally {
     saving.value = false
   }
@@ -322,7 +303,18 @@ onMounted(loadCatalog)
 
 .loading-state { padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
-.select-summary { margin-top: 10px; font-size: 12px; color: var(--text-secondary); }
+.tree-row { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.tree-row .type-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  border: 1px solid var(--border); color: var(--text-secondary);
+  background: var(--bg-surface); flex-shrink: 0;
+}
+.tree-row .code { color: var(--text-muted); font-size: 12px; }
+.tree-row .name { color: var(--text-primary); }
+.tree-row .opt-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px;
+  background: var(--bg-surface); color: var(--text-secondary); border: 1px solid var(--border);
+}
 
 .modal-footer {
   display: flex;
