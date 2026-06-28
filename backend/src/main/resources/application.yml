@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: aetherpmo-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/aetherpmo
+    username: aetherpmo
+    password: aetherpmo1234!
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.aetherpmo: INFO
