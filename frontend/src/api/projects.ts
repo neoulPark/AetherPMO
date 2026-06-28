@@ -62,6 +62,11 @@ export async function updateTaskProgress(taskId: number, progressRate: number) {
   return res.data.data
 }
 
+export async function updateTask(id: number, payload: Record<string, unknown>) {
+  const res = await api.put(`/tasks/${id}`, payload)
+  return res.data.data
+}
+
 const STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: '수행 중',
   PLANNING: '준비',
