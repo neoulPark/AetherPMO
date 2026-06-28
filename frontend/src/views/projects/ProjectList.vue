@@ -40,7 +40,9 @@
       </div>
     </div>
 
-    <div class="projects-grid">
+    <div v-if="loading" class="loading-state">불러오는 중...</div>
+
+    <div class="projects-grid" v-else>
       <div
         v-for="project in filteredProjects"
         :key="project.id"
@@ -116,7 +118,7 @@
       </div>
     </div>
 
-    <div v-if="filteredProjects.length === 0">
+    <div v-if="!loading && filteredProjects.length === 0">
       <EmptyState message="해당 조건에 맞는 프로젝트가 없습니다." />
     </div>
 
@@ -178,9 +180,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { mockProjects, mockBiddingProjects } from '@/stores/mock'
+import { mockBiddingProjects } from '@/stores/mock'
+import { listProjects, mapProject } from '@/api/projects'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import ProgressBar from '@/components/common/ProgressBar.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -206,16 +209,33 @@ const form = ref({
 })
 
 const currentStage = computed(() => route.params.stage as string)
+const loading = ref(false)
+const apiProjects = ref<Project[]>([])
+
 const biddingCount = computed(() => mockBiddingProjects.length)
-const executionCount = computed(() => mockProjects.filter(p => p.stage === 'EXECUTION').length)
+const executionCount = computed(() =>
+  currentStage.value === 'execution' ? apiProjects.value.length : 0
+)
+
+async function loadProjects() {
+  const backendStage = currentStage.value === 'completed' ? 'COMPLETED' : 'EXECUTION'
+  loading.value = true
+  try {
+    const dtos = await listProjects(backendStage)
+    apiProjects.value = dtos.map(mapProject)
+  } catch (e) {
+    console.error('Failed to load projects', e)
+    apiProjects.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadProjects)
+watch(currentStage, loadProjects)
 
 const filteredProjects = computed(() => {
-  let list: Project[] = []
-  if (currentStage.value === 'execution') {
-    list = mockProjects.filter(p => p.stage === 'EXECUTION')
-  } else if (currentStage.value === 'completed') {
-    list = mockProjects.filter(p => p.stage === 'COMPLETED')
-  }
+  let list: Project[] = apiProjects.value
 
   if (filterTeam.value) list = list.filter(p => p.team === filterTeam.value)
   if (filterStatus.value) list = list.filter(p => p.status === filterStatus.value)
@@ -341,6 +361,13 @@ function handleCreate() {
   font-size: 13px;
   outline: none;
   width: 100%;
+}
+
+.loading-state {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .projects-grid {

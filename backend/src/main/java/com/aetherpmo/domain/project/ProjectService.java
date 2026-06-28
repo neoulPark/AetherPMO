@@ -5,6 +5,9 @@ import com.aetherpmo.domain.project.dto.ProjectCreateRequest;
 import com.aetherpmo.domain.project.dto.ProjectDto;
 import com.aetherpmo.domain.project.dto.ProjectSummaryDto;
 import com.aetherpmo.domain.project.dto.ProjectUpdateRequest;
+import com.aetherpmo.auth.UserEntity;
+import com.aetherpmo.auth.UserRepository;
+import com.aetherpmo.domain.company.CompanyNameRepository;
 import com.aetherpmo.domain.task.TaskRepository;
 import com.aetherpmo.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +22,8 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final TaskRepository taskRepository;
+    private final UserRepository userRepository;
+    private final CompanyNameRepository companyNameRepository;
     private final CurrentUser currentUser;
 
     @Transactional(readOnly = true)
@@ -26,12 +31,19 @@ public class ProjectService {
         List<Project> projects = (stage == null || stage.isBlank())
                 ? projectRepository.findAllByOrderByIdAsc()
                 : projectRepository.findByProjectStageOrderByIdAsc(stage);
-        return projects.stream().map(ProjectDto::from).toList();
+        return projects.stream().map(this::toDtoEnriched).toList();
     }
 
     @Transactional(readOnly = true)
     public ProjectDto get(Long id) {
-        return ProjectDto.from(load(id));
+        return toDtoEnriched(load(id));
+    }
+
+    private ProjectDto toDtoEnriched(Project p) {
+        String pmName = p.getPmId() == null ? null
+                : userRepository.findById(p.getPmId()).map(UserEntity::getFullName).orElse(null);
+        String clientName = companyNameRepository.findNameById(p.getClientCompanyId());
+        return ProjectDto.from(p, pmName, clientName);
     }
 
     @Transactional

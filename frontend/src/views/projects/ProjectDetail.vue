@@ -61,6 +61,7 @@
 
     <div class="detail-tabs">
       <router-link :to="`/projects/${project.id}/overview`" class="tab-link" active-class="active">사업 개요</router-link>
+      <router-link :to="`/projects/${project.id}/tasks`" class="tab-link" active-class="active">업무</router-link>
       <router-link :to="`/projects/${project.id}/deliverables`" class="tab-link" active-class="active">산출물</router-link>
       <router-link :to="`/projects/${project.id}/meetings`" class="tab-link" active-class="active">회의록</router-link>
       <router-link :to="`/projects/${project.id}/risks`" class="tab-link" active-class="active">이슈/리스크</router-link>
@@ -78,15 +79,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, provide, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { mockProjects } from '@/stores/mock'
+import { getProject, mapProject } from '@/api/projects'
+import type { Project } from '@/types'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 const route = useRoute()
 const projectId = computed(() => Number(route.params.id))
-const project = computed(() => mockProjects.find(p => p.id === projectId.value))
+const project = ref<Project | null>(null)
+
+provide('project', project)
+
+async function load() {
+  try {
+    const dto = await getProject(projectId.value)
+    project.value = mapProject(dto)
+  } catch (e) {
+    console.error('Failed to load project', e)
+    project.value = null
+  }
+}
+
+onMounted(load)
+watch(projectId, load)
 
 function formatBudget(v: number) {
   if (v >= 100000000) return `${(v / 100000000).toFixed(1)}억원`

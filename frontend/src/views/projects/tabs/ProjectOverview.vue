@@ -137,16 +137,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject, type Ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { mockProjects, mockActionItems, mockIssues } from '@/stores/mock'
+import { mockActionItems, mockIssues } from '@/stores/mock'
+import type { Project } from '@/types'
 import ProgressBar from '@/components/common/ProgressBar.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 
 const route = useRoute()
 const projectId = computed(() => Number(route.params.id))
-const project = computed(() => mockProjects.find(p => p.id === projectId.value))
+const project = inject<Ref<Project | null>>('project')!
 
 const projectActionItems = computed(() => mockActionItems.filter(a => a.projectId === projectId.value))
 const projectIssues = computed(() => mockIssues.filter(i => i.projectId === projectId.value))

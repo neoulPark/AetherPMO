@@ -23,9 +23,15 @@ public record ProjectDto(
         String riskLevel,
         String team,
         String location,
-        String businessType
+        String businessType,
+        String pmName,
+        String clientName
 ) {
     public static ProjectDto from(Project p) {
+        return from(p, null, null);
+    }
+
+    public static ProjectDto from(Project p, String pmName, String clientName) {
         return new ProjectDto(
                 p.getId(),
                 p.getProjectName(),
@@ -44,7 +50,9 @@ public record ProjectDto(
                 p.getRiskLevel(),
                 p.getTeam(),
                 p.getLocation(),
-                p.getBusinessType()
+                p.getBusinessType(),
+                pmName,
+                clientName
         );
     }
 }

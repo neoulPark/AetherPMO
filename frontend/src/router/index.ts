@@ -18,6 +18,7 @@ const router = createRouter({
           children: [
             { path: '', redirect: 'overview' },
             { path: 'overview', component: () => import('@/views/projects/tabs/ProjectOverview.vue') },
+            { path: 'tasks', component: () => import('@/views/projects/tabs/ProjectTasks.vue') },
             { path: 'deliverables', component: () => import('@/views/projects/tabs/ProjectDeliverables.vue') },
             { path: 'meetings', component: () => import('@/views/projects/tabs/ProjectMeetings.vue') },
             { path: 'risks', component: () => import('@/views/projects/tabs/ProjectRisks.vue') },
