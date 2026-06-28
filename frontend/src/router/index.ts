@@ -16,7 +16,7 @@ const router = createRouter({
           path: 'projects/:id(\\d+)',
           component: () => import('@/views/projects/ProjectDetail.vue'),
           children: [
-            { path: '', redirect: 'overview' },
+            { path: '', redirect: (to) => `/projects/${to.params.id}/overview` },
             { path: 'overview', component: () => import('@/views/projects/tabs/ProjectOverview.vue') },
             { path: 'tasks', component: () => import('@/views/projects/tabs/ProjectTasks.vue') },
             { path: 'deliverables', component: () => import('@/views/projects/tabs/ProjectDeliverables.vue') },
@@ -32,6 +32,8 @@ const router = createRouter({
         { path: 'action-items', component: () => import('@/views/actionitems/ActionItemList.vue') },
         { path: 'official-docs', component: () => import('@/views/officialdocs/OfficialDocList.vue') },
         { path: 'meetings', component: () => import('@/views/meetings/MeetingList.vue') },
+        // 매칭 안 되는 경로는 사이드바를 유지한 채 프로젝트 목록으로 폴백 (전체 빈화면 방지)
+        { path: ':pathMatch(.*)*', redirect: '/projects/execution' },
       ],
     },
   ],
