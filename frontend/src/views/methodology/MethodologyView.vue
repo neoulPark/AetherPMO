@@ -52,7 +52,7 @@
           <el-input v-model="formCode" placeholder="코드 (선택)" />
         </el-form-item>
         <el-form-item v-if="showOptional">
-          <el-checkbox v-model="formOptional">선택 항목</el-checkbox>
+          <el-checkbox v-model="formRequired">필수 항목</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -130,7 +130,7 @@ const newNodeType = ref<NodeType>('PHASE')
 const newParentId = ref<number | null>(null)
 const formName = ref('')
 const formCode = ref('')
-const formOptional = ref(false)
+const formRequired = ref(true)   // 체크=필수 (isOptional의 반대)
 
 const dialogTitle = computed(() =>
   editingId.value === null
@@ -147,7 +147,7 @@ function openAdd(parent: CatalogNode | null, nodeType: NodeType) {
   newParentId.value = parent ? parent.nodeId : null
   formName.value = ''
   formCode.value = ''
-  formOptional.value = false
+  formRequired.value = true
   dialogVisible.value = true
 }
 
@@ -157,7 +157,7 @@ function openEdit(node: CatalogNode) {
   newParentId.value = node.parentNodeId
   formName.value = node.name
   formCode.value = node.code || ''
-  formOptional.value = node.isOptional
+  formRequired.value = !node.isOptional
   dialogVisible.value = true
 }
 
@@ -174,14 +174,14 @@ async function submit() {
         nodeType: newNodeType.value,
         name: formName.value.trim(),
         code: formCode.value.trim() || null,
-        isOptional: showOptional.value ? formOptional.value : false,
+        isOptional: showOptional.value ? !formRequired.value : false,
       })
       ElMessage.success('추가되었습니다.')
     } else {
       await updateNode(editingId.value, {
         name: formName.value.trim(),
         code: formCode.value.trim() || null,
-        isOptional: showOptional.value ? formOptional.value : undefined,
+        isOptional: showOptional.value ? !formRequired.value : undefined,
       })
       ElMessage.success('수정되었습니다.')
     }
