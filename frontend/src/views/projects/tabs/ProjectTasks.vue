@@ -28,7 +28,12 @@
         <tbody>
           <tr v-for="t in flatTasks" :key="t.id">
             <td class="col-name">
-              <span :style="{ paddingLeft: `${t.depth * 20}px` }" :class="{ 'is-parent': hasChildren(t) }">
+              <span
+                class="task-link"
+                :style="{ paddingLeft: `${t.depth * 20}px` }"
+                :class="{ 'is-parent': hasChildren(t) }"
+                @click="openDrawer(t)"
+              >
                 {{ t.taskName }}
               </span>
             </td>
@@ -101,10 +106,11 @@
               class="gantt-left-row"
             >
               <span
-                class="gantt-name"
+                class="gantt-name task-link"
                 :style="{ paddingLeft: `${row.depth * 16}px` }"
                 :class="{ 'is-parent': row.hasChildren }"
                 :title="row.taskName"
+                @click="openDrawerById(row.id, !row.hasChildren)"
               >{{ row.taskName }}</span>
             </div>
           </div>
@@ -138,6 +144,7 @@
                 <div
                   v-if="row.bar"
                   class="gantt-bar"
+                  @click="openDrawerById(row.id, !row.hasChildren)"
                   :style="{
                     left: `${row.bar.left}px`,
                     width: `${row.bar.width}px`,
@@ -157,6 +164,14 @@
         </div>
       </div>
     </div>
+
+    <TaskDetailDrawer
+      v-model="drawerOpen"
+      :task-id="selectedTaskId"
+      :project-id="projectId"
+      :is-leaf="selectedIsLeaf"
+      @updated="load"
+    />
   </div>
 </template>
 
@@ -167,6 +182,7 @@ import { getProjectTasks, updateTaskProgress, updateTask, type TaskNode } from '
 import ProgressBar from '@/components/common/ProgressBar.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import TaskDetailDrawer from '@/components/projects/TaskDetailDrawer.vue'
 
 const route = useRoute()
 const projectId = computed(() => Number(route.params.id))
@@ -175,6 +191,19 @@ const tree = ref<TaskNode[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const view = ref<'tree' | 'gantt'>('tree')
+
+const drawerOpen = ref(false)
+const selectedTaskId = ref<number | null>(null)
+const selectedIsLeaf = ref(true)
+
+function openDrawer(t: TaskNode) {
+  openDrawerById(t.id, !hasChildren(t))
+}
+function openDrawerById(id: number, isLeaf: boolean) {
+  selectedTaskId.value = id
+  selectedIsLeaf.value = isLeaf
+  drawerOpen.value = true
+}
 
 const DAY_W = 16
 const ROW_H = 34
@@ -461,6 +490,9 @@ watch(projectId, load)
 
 .is-parent { font-weight: 600; }
 
+.task-link { cursor: pointer; }
+.task-link:hover { color: var(--color-primary); text-decoration: underline; }
+
 .date-cell {
   display: flex;
   align-items: center;
@@ -613,6 +645,7 @@ watch(projectId, load)
   display: flex;
   align-items: center;
   z-index: 2;
+  cursor: pointer;
 }
 .gantt-bar-fill {
   position: absolute;
