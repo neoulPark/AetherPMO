@@ -84,14 +84,14 @@
           <span>회의 관리</span>
         </router-link>
 
-        <router-link to="/templates" class="nav-item" :class="{ active: route.path === '/templates' }">
+        <router-link to="/methodology" class="nav-item" :class="{ active: route.path === '/methodology' }">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M4 22h14a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v4"/>
             <polyline points="14 2 14 8 20 8"/>
             <path d="M2 15h10"/>
             <path d="M9 18l3-3-3-3"/>
           </svg>
-          <span>산출물 템플릿</span>
+          <span>사업관리 표준</span>
         </router-link>
       </div>
     </nav>

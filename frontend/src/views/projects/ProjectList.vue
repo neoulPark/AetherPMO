@@ -123,59 +123,11 @@
     </div>
 
     <!-- Create Project Modal -->
-    <div v-if="showModal" class="modal-overlay" @click.self="showModal = false">
-      <div class="modal">
-        <div class="modal-header">
-          <h2>새 프로젝트 등록</h2>
-          <button class="modal-close" @click="showModal = false">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>프로젝트명 *</label>
-            <input v-model="form.name" type="text" placeholder="프로젝트명을 입력하세요" />
-          </div>
-          <div class="form-group">
-            <label>고객사 *</label>
-            <input v-model="form.client" type="text" placeholder="고객사명을 입력하세요" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>PM</label>
-              <input v-model="form.pm" type="text" placeholder="PM 이름" />
-            </div>
-            <div class="form-group">
-              <label>담당 팀</label>
-              <select v-model="form.team">
-                <option value="개발팀">개발팀</option>
-                <option value="기획팀">기획팀</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>착수일</label>
-              <input v-model="form.startDate" type="date" />
-            </div>
-            <div class="form-group">
-              <label>종료일</label>
-              <input v-model="form.endDate" type="date" />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>사업 예산 (원)</label>
-            <input v-model="form.budget" type="number" placeholder="예산을 입력하세요" />
-          </div>
-          <div class="form-group">
-            <label>프로젝트 설명</label>
-            <textarea v-model="form.description" rows="3" placeholder="프로젝트 개요를 입력하세요"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-secondary" @click="showModal = false">취소</button>
-          <button class="btn-primary" @click="handleCreate">등록</button>
-        </div>
-      </div>
-    </div>
+    <CreateProjectModal
+      v-if="showModal"
+      @close="showModal = false"
+      @created="loadProjects"
+    />
   </div>
 </template>
 
@@ -187,6 +139,7 @@ import { listProjects, mapProject } from '@/api/projects'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import ProgressBar from '@/components/common/ProgressBar.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
+import CreateProjectModal from '@/views/projects/CreateProjectModal.vue'
 import type { Project } from '@/types'
 
 const route = useRoute()
@@ -196,17 +149,6 @@ const filterTeam = ref('')
 const filterStatus = ref('')
 const searchQuery = ref('')
 const showModal = ref(false)
-
-const form = ref({
-  name: '',
-  client: '',
-  pm: '',
-  team: '개발팀',
-  startDate: '',
-  endDate: '',
-  budget: 0,
-  description: '',
-})
 
 const currentStage = computed(() => route.params.stage as string)
 const loading = ref(false)
@@ -248,11 +190,6 @@ function formatBudget(v: number) {
   if (v >= 100000000) return `${(v / 100000000).toFixed(1)}억`
   if (v >= 10000) return `${(v / 10000).toFixed(0)}만`
   return v.toLocaleString()
-}
-
-function handleCreate() {
-  showModal.value = false
-  form.value = { name: '', client: '', pm: '', team: '개발팀', startDate: '', endDate: '', budget: 0, description: '' }
 }
 </script>
 
