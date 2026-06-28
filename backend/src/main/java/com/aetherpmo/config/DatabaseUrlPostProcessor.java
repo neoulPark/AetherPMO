@@ -14,24 +14,31 @@ import java.util.Map;
  * (postgres://user:pass@host:port/db 형식)을 Spring이 이해하는
  * jdbc:postgresql://host:port/db 형식 + username/password 로 변환한다.
  *
- * SPRING_DATASOURCE_URL 이 이미 설정돼 있으면(명시적 지정) 아무것도 하지 않는다.
- * 로컬 개발에서는 DATABASE_URL 이 없으므로 application.yml 기본값을 사용한다.
+ * 우선순위:
+ *  1) SPRING_DATASOURCE_URL 환경변수가 명시돼 있으면 그것을 사용 (변환 안 함)
+ *  2) DATABASE_URL 환경변수가 있으면 변환하여 사용 (application.yml 기본값보다 우선)
+ *  3) 둘 다 없으면 application.yml 기본값(localhost) 사용 — 로컬 개발
  */
 public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
 
     @Override
     public void postProcessEnvironment(ConfigurableEnvironment env, SpringApplication app) {
-        String explicit = env.getProperty("spring.datasource.url");
-        String databaseUrl = env.getProperty("DATABASE_URL");
-
-        // 이미 jdbc URL이 명시됐거나 DATABASE_URL이 없으면 변환 불필요
-        if (databaseUrl == null || databaseUrl.isBlank()) {
+        // 명시적 SPRING_DATASOURCE_URL(환경변수)이 있으면 그대로 둔다.
+        // 주의: application.yml 기본값(jdbc:localhost)은 무시해야 하므로
+        //      env.getProperty(...) 가 아니라 실제 OS 환경변수만 본다.
+        String explicitEnv = System.getenv("SPRING_DATASOURCE_URL");
+        if (explicitEnv != null && !explicitEnv.isBlank()) {
             return;
         }
-        if (explicit != null && explicit.startsWith("jdbc:")) {
+
+        String databaseUrl = System.getenv("DATABASE_URL");
+        if (databaseUrl == null || databaseUrl.isBlank()) {
+            // 로컬 개발: application.yml 기본값 사용
+            System.out.println("[DatabaseUrlPostProcessor] DATABASE_URL 없음 → application.yml 기본값 사용");
             return;
         }
         if (!databaseUrl.startsWith("postgres://") && !databaseUrl.startsWith("postgresql://")) {
+            System.out.println("[DatabaseUrlPostProcessor] DATABASE_URL 형식이 postgres:// 아님 → 변환 생략");
             return;
         }
 
@@ -46,22 +53,21 @@ public class DatabaseUrlPostProcessor implements EnvironmentPostProcessor {
             }
             int port = uri.getPort() == -1 ? 5432 : uri.getPort();
             String jdbc = "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath();
-            // 클라우드 매니지드 DB는 대부분 SSL 필요
-            if (uri.getQuery() != null) {
-                jdbc += "?" + uri.getQuery();
-            } else {
-                jdbc += "?sslmode=require";
-            }
+            // sslmode=prefer: SSL 지원 시 SSL 사용, 미지원 시 평문 — 내부/외부 모두 안전
+            jdbc += (uri.getQuery() != null) ? "?" + uri.getQuery() : "?sslmode=prefer";
 
             Map<String, Object> props = new HashMap<>();
             props.put("spring.datasource.url", jdbc);
             if (username != null) props.put("spring.datasource.username", username);
             if (password != null) props.put("spring.datasource.password", password);
 
+            // addFirst → application.yml 기본값보다 우선 적용
             env.getPropertySources().addFirst(
                     new MapPropertySource("databaseUrlDerived", props));
+
+            System.out.println("[DatabaseUrlPostProcessor] DATABASE_URL 변환 완료 → "
+                    + "jdbc:postgresql://" + uri.getHost() + ":" + port + uri.getPath() + " (user=" + username + ")");
         } catch (Exception e) {
-            // 변환 실패 시 기본 설정으로 진행 (로그만)
             System.err.println("[DatabaseUrlPostProcessor] DATABASE_URL 파싱 실패: " + e.getMessage());
         }
     }

@@ -13,7 +13,7 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     plan: free
-    healthCheckPath: /api/v1/methodology/catalog
+    healthCheckPath: /api/v1/health
     envVars:
       # DB 연결 — 블루프린트가 위 DB의 연결 문자열을 자동 주입.
       # DatabaseUrlPostProcessor가 postgres:// → jdbc:postgresql:// 로 변환.
