@@ -12,6 +12,7 @@ export interface CatalogNode {
   isOptional: boolean
   seqNo: number | null
   sortOrder: number | null
+  workflowId: number | null
   children: CatalogNode[]
 }
 
@@ -33,6 +34,7 @@ export interface UpdateNodePayload {
   isOptional?: boolean
   sortOrder?: number | null
   description?: string | null
+  workflowId?: number | null
 }
 
 export interface CreateProjectWithTailoringPayload {
