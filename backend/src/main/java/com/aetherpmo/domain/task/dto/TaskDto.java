@@ -21,9 +21,15 @@ public record TaskDto(
         BigDecimal actualEffort,
         Integer depth,
         Integer sortOrder,
-        String description
+        String description,
+        Long catalogNodeId,
+        Long workflowId
 ) {
     public static TaskDto from(Task t) {
+        return from(t, null);
+    }
+
+    public static TaskDto from(Task t, Long workflowId) {
         return new TaskDto(
                 t.getId(),
                 t.getParentTaskId(),
@@ -40,7 +46,9 @@ public record TaskDto(
                 t.getActualEffort(),
                 t.getDepth(),
                 t.getSortOrder(),
-                t.getDescription()
+                t.getDescription(),
+                t.getCatalogNodeId(),
+                workflowId
         );
     }
 }

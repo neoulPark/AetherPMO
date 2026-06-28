@@ -8,6 +8,8 @@ public interface DeliverableRepository extends JpaRepository<Deliverable, Long> 
 
     List<Deliverable> findByProjectIdOrderByIdAsc(Long projectId);
 
+    List<Deliverable> findByTaskIdOrderByIdAsc(Long taskId);
+
     long countByProjectId(Long projectId);
 
     long countByProjectIdAndStatus(Long projectId, String status);

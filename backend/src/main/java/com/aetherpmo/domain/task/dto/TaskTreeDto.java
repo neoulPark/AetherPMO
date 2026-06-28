@@ -22,9 +22,15 @@ public record TaskTreeDto(
         Integer depth,
         Integer sortOrder,
         String description,
+        Long catalogNodeId,
+        Long workflowId,
         List<TaskTreeDto> children
 ) {
     public static TaskTreeDto from(Task t) {
+        return from(t, null);
+    }
+
+    public static TaskTreeDto from(Task t, Long workflowId) {
         return new TaskTreeDto(
                 t.getId(),
                 t.getParentTaskId(),
@@ -40,6 +46,8 @@ public record TaskTreeDto(
                 t.getDepth(),
                 t.getSortOrder(),
                 t.getDescription(),
+                t.getCatalogNodeId(),
+                workflowId,
                 new ArrayList<>()
         );
     }

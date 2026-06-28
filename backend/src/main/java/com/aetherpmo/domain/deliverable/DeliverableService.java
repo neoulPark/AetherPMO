@@ -49,6 +49,15 @@ public class DeliverableService {
     }
 
     @Transactional(readOnly = true)
+    public List<DeliverableDto> listByTask(Long taskId) {
+        List<Deliverable> deliverables = deliverableRepository.findByTaskIdOrderByIdAsc(taskId);
+        Map<Long, String> nameCache = new HashMap<>();
+        return deliverables.stream()
+                .map(d -> toDto(d, nameCache))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public DeliverableDto get(Long id) {
         return toDto(load(id), new HashMap<>());
     }

@@ -1,12 +1,16 @@
 package com.aetherpmo.domain.task;
 
 import com.aetherpmo.common.ApiResponse;
+import com.aetherpmo.domain.deliverable.dto.DeliverableDto;
 import com.aetherpmo.domain.task.dto.AssignRequest;
 import com.aetherpmo.domain.task.dto.ProgressUpdateRequest;
 import com.aetherpmo.domain.task.dto.TaskCreateRequest;
+import com.aetherpmo.domain.task.dto.TaskDeliverableCreateRequest;
 import com.aetherpmo.domain.task.dto.TaskDto;
 import com.aetherpmo.domain.task.dto.TaskTreeDto;
 import com.aetherpmo.domain.task.dto.TaskUpdateRequest;
+import com.aetherpmo.domain.task.dto.TemplateDeliverableDto;
+import com.aetherpmo.domain.workflow.dto.WorkflowDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -68,5 +72,26 @@ public class TaskController {
     @GetMapping("/api/v1/tasks/{id}/assignment-history")
     public ApiResponse<List<TaskAssignmentHistory>> history(@PathVariable Long id) {
         return ApiResponse.ok(taskService.history(id));
+    }
+
+    @GetMapping("/api/v1/tasks/{id}/workflow")
+    public ApiResponse<WorkflowDto> workflow(@PathVariable Long id) {
+        return ApiResponse.ok(taskService.workflow(id));
+    }
+
+    @GetMapping("/api/v1/tasks/{id}/deliverables")
+    public ApiResponse<List<DeliverableDto>> deliverables(@PathVariable Long id) {
+        return ApiResponse.ok(taskService.deliverables(id));
+    }
+
+    @PostMapping("/api/v1/tasks/{id}/deliverables")
+    public ApiResponse<DeliverableDto> createDeliverable(@PathVariable Long id,
+                                                         @Valid @RequestBody TaskDeliverableCreateRequest request) {
+        return ApiResponse.ok(taskService.createDeliverable(id, request), "Deliverable created");
+    }
+
+    @GetMapping("/api/v1/tasks/{id}/template-deliverables")
+    public ApiResponse<List<TemplateDeliverableDto>> templateDeliverables(@PathVariable Long id) {
+        return ApiResponse.ok(taskService.templateDeliverables(id));
     }
 }

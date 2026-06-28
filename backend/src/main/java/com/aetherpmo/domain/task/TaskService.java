@@ -1,13 +1,24 @@
 package com.aetherpmo.domain.task;
 
 import com.aetherpmo.common.ApiError;
+import com.aetherpmo.domain.deliverable.DeliverableService;
+import com.aetherpmo.domain.deliverable.dto.DeliverableCreateRequest;
+import com.aetherpmo.domain.deliverable.dto.DeliverableDto;
+import com.aetherpmo.domain.methodology.CatalogNode;
+import com.aetherpmo.domain.methodology.CatalogNodeRepository;
 import com.aetherpmo.domain.project.ProjectRepository;
 import com.aetherpmo.domain.task.dto.AssignRequest;
 import com.aetherpmo.domain.task.dto.ProgressUpdateRequest;
 import com.aetherpmo.domain.task.dto.TaskCreateRequest;
+import com.aetherpmo.domain.task.dto.TaskDeliverableCreateRequest;
 import com.aetherpmo.domain.task.dto.TaskDto;
 import com.aetherpmo.domain.task.dto.TaskTreeDto;
 import com.aetherpmo.domain.task.dto.TaskUpdateRequest;
+import com.aetherpmo.domain.task.dto.TemplateDeliverableDto;
+import com.aetherpmo.domain.workflow.Workflow;
+import com.aetherpmo.domain.workflow.WorkflowRepository;
+import com.aetherpmo.domain.workflow.WorkflowService;
+import com.aetherpmo.domain.workflow.dto.WorkflowDto;
 import com.aetherpmo.security.CurrentUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +39,10 @@ public class TaskService {
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final TaskAssignmentHistoryRepository historyRepository;
+    private final CatalogNodeRepository catalogNodeRepository;
+    private final WorkflowRepository workflowRepository;
+    private final WorkflowService workflowService;
+    private final DeliverableService deliverableService;
     private final CurrentUser currentUser;
 
     @Transactional(readOnly = true)
@@ -36,9 +52,19 @@ public class TaskService {
         }
         List<Task> tasks = taskRepository.findByProjectIdOrderBySortOrderAscIdAsc(projectId);
 
+        Map<Long, Long> workflowByCatalogNode = new HashMap<>();
+        for (Task t : tasks) {
+            Long cnId = t.getCatalogNodeId();
+            if (cnId != null && !workflowByCatalogNode.containsKey(cnId)) {
+                workflowByCatalogNode.put(cnId, resolveWorkflowId(cnId));
+            }
+        }
+
         Map<Long, TaskTreeDto> nodes = new LinkedHashMap<>();
         for (Task t : tasks) {
-            nodes.put(t.getId(), TaskTreeDto.from(t));
+            Long wfId = t.getCatalogNodeId() == null ? null
+                    : workflowByCatalogNode.get(t.getCatalogNodeId());
+            nodes.put(t.getId(), TaskTreeDto.from(t, wfId));
         }
 
         List<TaskTreeDto> roots = new ArrayList<>();
@@ -55,7 +81,64 @@ public class TaskService {
 
     @Transactional(readOnly = true)
     public TaskDto get(Long id) {
-        return TaskDto.from(load(id));
+        Task t = load(id);
+        return TaskDto.from(t, resolveWorkflowId(t.getCatalogNodeId()));
+    }
+
+    /**
+     * Resolve the workflow assigned to the task's catalog node, or null when the
+     * task has no catalog node or the node has no workflow.
+     */
+    private Long resolveWorkflowId(Long catalogNodeId) {
+        if (catalogNodeId == null) {
+            return null;
+        }
+        return catalogNodeRepository.findById(catalogNodeId)
+                .map(CatalogNode::getWorkflowId)
+                .orElse(null);
+    }
+
+    /**
+     * Returns the WorkflowDto for the task's workflow. Falls back to the default
+     * workflow so the UI always has a status set; null only when no default exists.
+     */
+    @Transactional(readOnly = true)
+    public WorkflowDto workflow(Long id) {
+        Task t = load(id);
+        Long workflowId = resolveWorkflowId(t.getCatalogNodeId());
+        if (workflowId == null) {
+            workflowId = workflowRepository.findFirstByIsDefaultTrue()
+                    .map(Workflow::getId)
+                    .orElse(null);
+        }
+        return workflowId == null ? null : workflowService.getWorkflow(workflowId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<DeliverableDto> deliverables(Long id) {
+        load(id);
+        return deliverableService.listByTask(id);
+    }
+
+    @Transactional
+    public DeliverableDto createDeliverable(Long id, TaskDeliverableCreateRequest req) {
+        Task t = load(id);
+        DeliverableCreateRequest create = new DeliverableCreateRequest(
+                req.deliverableName(), req.deliverableType(), "1.0", id, "DRAFT");
+        return deliverableService.create(t.getProjectId(), create);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TemplateDeliverableDto> templateDeliverables(Long id) {
+        Task t = load(id);
+        if (t.getCatalogNodeId() == null) {
+            return List.of();
+        }
+        return catalogNodeRepository
+                .findByParentNodeIdOrderBySortOrderAscIdAsc(t.getCatalogNodeId()).stream()
+                .filter(n -> "DELIVERABLE".equals(n.getNodeType()))
+                .map(TemplateDeliverableDto::from)
+                .toList();
     }
 
     @Transactional
