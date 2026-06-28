@@ -22,6 +22,12 @@ export interface ProjectDto {
   businessType: string | null
   pmName: string | null
   clientName: string | null
+  bidStatus?: string | null
+  consortiumRole?: string | null
+  consortiumShare?: number | null
+  vrbStatus?: string | null
+  announcementNo?: string | null
+  proposalDeadline?: string | null
 }
 
 export interface TaskNode {
@@ -82,6 +88,33 @@ function computeDday(endDate: string | null): number {
   const diff = Math.round((today.getTime() - end.getTime()) / 86400000)
   // positive => past due, negative => days remaining
   return diff
+}
+
+const BID_STATUS_LABELS: Record<string, string> = {
+  PREPARING: '제안 준비',
+  SUBMITTED: '제안 제출',
+  WAITING: '결과 대기',
+  WON: '수주',
+  LOST: '실패',
+}
+
+export function bidStatusLabel(status?: string | null): string {
+  if (!status) return '제안 준비'
+  return BID_STATUS_LABELS[status] || status
+}
+
+export function mapBiddingProject(dto: ProjectDto): Project {
+  const base = mapProject(dto)
+  return {
+    ...base,
+    bidStatus: dto.bidStatus || undefined,
+    consortiumRole: dto.consortiumRole || undefined,
+    consortiumShare: dto.consortiumShare ?? null,
+    vrb: dto.vrbStatus || undefined,
+    announcementNo: dto.announcementNo ?? null,
+    proposalDeadline: dto.proposalDeadline || undefined,
+    dday: computeDday(dto.proposalDeadline || dto.plannedEndDate),
+  }
 }
 
 export function mapProject(dto: ProjectDto): Project {

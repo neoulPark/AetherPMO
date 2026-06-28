@@ -78,6 +78,24 @@ public class Project extends BaseEntity {
     @Column(name = "business_type", length = 100)
     private String businessType;
 
+    @Column(name = "bid_status", length = 20)
+    private String bidStatus;
+
+    @Column(name = "consortium_role", length = 100)
+    private String consortiumRole;
+
+    @Column(name = "consortium_share", precision = 5, scale = 2)
+    private BigDecimal consortiumShare;
+
+    @Column(name = "vrb_status", length = 50)
+    private String vrbStatus;
+
+    @Column(name = "announcement_no", length = 100)
+    private String announcementNo;
+
+    @Column(name = "proposal_deadline")
+    private LocalDate proposalDeadline;
+
     @Column(name = "created_by")
     private Long createdBy;
 

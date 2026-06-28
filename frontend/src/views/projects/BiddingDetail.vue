@@ -10,7 +10,7 @@
       <div class="detail-header">
         <div class="header-badges">
           <span class="bid-status" :class="project.bidStatus === 'SUBMITTED' ? 'submitted' : 'preparing'">
-            {{ project.bidStatus === 'SUBMITTED' ? '제안 제출' : '제안 준비' }}
+            {{ bidStatusLabel(project.bidStatus) }}
           </span>
           <span class="team-badge">{{ project.team }}</span>
         </div>
@@ -38,10 +38,10 @@
         <div class="card">
           <h3 class="card-title">사업 기본 정보</h3>
           <div class="info-list">
-            <div class="info-row"><span class="info-key">발주처</span><span class="info-val">{{ project.client }}</span></div>
+            <div class="info-row"><span class="info-key">발주처</span><span class="info-val">{{ project.client || '미지정' }}</span></div>
             <div class="info-row"><span class="info-key">사업 규모</span><span class="info-val">{{ formatBudget(project.budget) }}</span></div>
-            <div class="info-row"><span class="info-key">PM</span><span class="info-val">{{ project.pm }}</span></div>
-            <div class="info-row"><span class="info-key">담당팀</span><span class="info-val">{{ project.team }}</span></div>
+            <div class="info-row"><span class="info-key">PM</span><span class="info-val">{{ project.pm || '미지정' }}</span></div>
+            <div class="info-row"><span class="info-key">담당팀</span><span class="info-val">{{ project.team || '미지정' }}</span></div>
             <div class="info-row"><span class="info-key">참여인원</span><span class="info-val">{{ project.memberCount }}명</span></div>
           </div>
         </div>
@@ -49,12 +49,17 @@
           <h3 class="card-title">입찰 정보</h3>
           <div class="info-list">
             <div class="info-row"><span class="info-key">공고 번호</span><span class="info-val">{{ project.announcementNo ?? '미등록' }}</span></div>
-            <div class="info-row"><span class="info-key">제안 마감일</span><span class="info-val">{{ project.proposalDeadline ?? '-' }}</span></div>
-            <div class="info-row"><span class="info-key">컨소시엄 역할</span><span class="info-val">{{ project.consortiumRole }}</span></div>
+            <div class="info-row"><span class="info-key">제안 마감일</span><span class="info-val">{{ project.proposalDeadline ?? '미지정' }}</span></div>
+            <div class="info-row"><span class="info-key">컨소시엄 역할</span><span class="info-val">{{ project.consortiumRole ?? '미지정' }}</span></div>
             <div class="info-row"><span class="info-key">컨소시엄 지분</span><span class="info-val">{{ project.consortiumShare != null ? `${project.consortiumShare}%` : '미지정' }}</span></div>
-            <div class="info-row"><span class="info-key">VRB 상태</span><span class="info-val">{{ project.vrb }}</span></div>
+            <div class="info-row"><span class="info-key">VRB 상태</span><span class="info-val">{{ project.vrb ?? '미등록' }}</span></div>
           </div>
         </div>
+      </div>
+
+      <!-- 업무(WBS) -->
+      <div v-if="activeTab === 'tasks'">
+        <ProjectTasks />
       </div>
 
       <!-- 제안준비서류 -->
@@ -85,24 +90,43 @@
       </div>
     </div>
   </div>
+  <div v-else-if="loading" class="loading-state">불러오는 중...</div>
   <div v-else>
     <EmptyState message="입찰 프로젝트를 찾을 수 없습니다." />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { mockBiddingProjects } from '@/stores/mock'
+import { getProject, mapBiddingProject, bidStatusLabel } from '@/api/projects'
 import EmptyState from '@/components/common/EmptyState.vue'
+import ProjectTasks from '@/views/projects/tabs/ProjectTasks.vue'
+import type { Project } from '@/types'
 
 const route = useRoute()
-const projectId = computed(() => Number(route.params.id))
-const project = computed(() => mockBiddingProjects.find(p => p.id === projectId.value))
+const project = ref<Project | null>(null)
+const loading = ref(false)
+
+async function loadProject() {
+  loading.value = true
+  try {
+    const dto = await getProject(route.params.id as string)
+    project.value = mapBiddingProject(dto)
+  } catch (e) {
+    console.error('Failed to load bidding project', e)
+    project.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadProject)
 
 const activeTab = ref('overview')
 const tabs = [
   { key: 'overview', label: '사업 개요' },
+  { key: 'tasks', label: '업무' },
   { key: 'proposal', label: '제안 준비 서류' },
   { key: 'consortium', label: '컨소시엄' },
   { key: 'vrb', label: 'VRB' },
@@ -116,6 +140,7 @@ function formatBudget(v: number) {
 
 <style scoped>
 .bidding-detail { max-width: 1200px; }
+.loading-state { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
 .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
 .breadcrumb a { color: var(--color-primary); text-decoration: none; }
 .sep { color: var(--text-muted); }

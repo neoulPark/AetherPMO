@@ -10,20 +10,34 @@
 
     <div class="stage-tabs">
       <router-link to="/projects/bidding" class="stage-tab active">
-        입찰 단계 <span class="count">{{ mockBiddingProjects.length }}</span>
+        입찰 단계 <span class="count">{{ biddingProjects.length }}</span>
       </router-link>
       <router-link to="/projects/execution" class="stage-tab">
-        수행 중 <span class="count">{{ mockProjects.length }}</span>
+        수행 중 <span class="count">0</span>
       </router-link>
       <router-link to="/projects/completed" class="stage-tab">
         종료 <span class="count">0</span>
       </router-link>
     </div>
 
+    <div class="sub-tabs">
+      <button
+        v-for="t in subTabs"
+        :key="t.key"
+        class="sub-tab"
+        :class="{ active: activeSubTab === t.key }"
+        @click="activeSubTab = t.key"
+      >{{ t.label }} <span class="count">{{ countFor(t.key) }}</span></button>
+    </div>
+
     <div class="content-layout">
       <div class="projects-col">
+        <div v-if="loading" class="loading-state">불러오는 중...</div>
+        <div v-else-if="filteredProjects.length === 0">
+          <EmptyState message="해당 조건에 맞는 입찰 프로젝트가 없습니다." />
+        </div>
         <div
-          v-for="project in mockBiddingProjects"
+          v-for="project in filteredProjects"
           :key="project.id"
           class="bid-card"
           @click="router.push(`/projects/bidding/${project.id}`)"
@@ -31,7 +45,7 @@
           <div class="bid-card-header">
             <div class="bid-header-left">
               <span class="bid-status" :class="project.bidStatus === 'SUBMITTED' ? 'submitted' : 'preparing'">
-                {{ project.bidStatus === 'SUBMITTED' ? '제안 제출' : '제안 준비' }}
+                {{ bidStatusLabel(project.bidStatus) }}
               </span>
               <span class="team-badge">{{ project.team }}</span>
             </div>
@@ -121,14 +135,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { mockBiddingProjects, mockProjects } from '@/stores/mock'
+import { listProjects, mapBiddingProject, bidStatusLabel } from '@/api/projects'
+import EmptyState from '@/components/common/EmptyState.vue'
+import type { Project } from '@/types'
 
 const router = useRouter()
 const naraSearch = ref('')
 const naraType = ref('')
 const naraBudget = ref('')
+
+const loading = ref(false)
+const biddingProjects = ref<Project[]>([])
+
+const subTabs = [
+  { key: 'all', label: '전체' },
+  { key: 'PREPARING', label: '제안 준비중' },
+  { key: 'SUBMITTED', label: '제안 제출' },
+  { key: 'WAITING', label: '결과 대기' },
+  { key: 'WON', label: '수주' },
+  { key: 'LOST', label: '실패' },
+]
+const activeSubTab = ref('all')
+
+function countFor(key: string) {
+  if (key === 'all') return biddingProjects.value.length
+  return biddingProjects.value.filter(p => p.bidStatus === key).length
+}
+
+const filteredProjects = computed(() => {
+  if (activeSubTab.value === 'all') return biddingProjects.value
+  return biddingProjects.value.filter(p => p.bidStatus === activeSubTab.value)
+})
+
+async function loadProjects() {
+  loading.value = true
+  try {
+    const dtos = await listProjects('BIDDING')
+    biddingProjects.value = dtos.map(mapBiddingProject)
+  } catch (e) {
+    console.error('Failed to load bidding projects', e)
+    biddingProjects.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadProjects)
 
 function formatBudget(v: number) {
   if (v >= 100000000) return `${(v / 100000000).toFixed(1)}억원`
@@ -155,6 +209,12 @@ function isDeadlineNear(date?: string) {
 .stage-tab { padding: 8px 16px; font-size: 13px; color: var(--text-secondary); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; display: flex; align-items: center; gap: 6px; transition: color 0.15s; }
 .stage-tab:hover, .stage-tab.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
 .count { background: var(--bg-surface2); color: var(--text-muted); font-size: 11px; padding: 1px 6px; border-radius: 10px; }
+
+.sub-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.sub-tab { background: var(--bg-surface2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: 16px; padding: 5px 12px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.sub-tab.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.sub-tab .count { background: rgba(0,0,0,0.2); color: inherit; }
+.loading-state { padding: 40px; text-align: center; color: var(--text-muted); font-size: 13px; }
 
 .content-layout { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
 

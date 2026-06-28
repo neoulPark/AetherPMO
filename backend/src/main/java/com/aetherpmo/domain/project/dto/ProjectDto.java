@@ -24,6 +24,12 @@ public record ProjectDto(
         String team,
         String location,
         String businessType,
+        String bidStatus,
+        String consortiumRole,
+        BigDecimal consortiumShare,
+        String vrbStatus,
+        String announcementNo,
+        LocalDate proposalDeadline,
         String pmName,
         String clientName
 ) {
@@ -51,6 +57,12 @@ public record ProjectDto(
                 p.getTeam(),
                 p.getLocation(),
                 p.getBusinessType(),
+                p.getBidStatus(),
+                p.getConsortiumRole(),
+                p.getConsortiumShare(),
+                p.getVrbStatus(),
+                p.getAnnouncementNo(),
+                p.getProposalDeadline(),
                 pmName,
                 clientName
         );
