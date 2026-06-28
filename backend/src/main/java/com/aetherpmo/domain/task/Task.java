@@ -72,8 +72,8 @@ public class Task extends BaseEntity {
     @Column(name = "description")
     private String description;
 
-    @Column(name = "task_template_id")
-    private Long taskTemplateId;
+    @Column(name = "catalog_node_id")
+    private Long catalogNodeId;
 
     @Column(name = "created_by")
     private Long createdBy;

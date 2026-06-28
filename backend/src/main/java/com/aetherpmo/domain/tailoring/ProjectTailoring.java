@@ -27,11 +27,8 @@ public class ProjectTailoring extends BaseEntity {
     @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(name = "task_template_id")
-    private Long taskTemplateId;
-
-    @Column(name = "deliverable_template_id")
-    private Long deliverableTemplateId;
+    @Column(name = "catalog_node_id")
+    private Long catalogNodeId;
 
     @Column(name = "is_selected", nullable = false)
     private Boolean isSelected = true;

@@ -68,8 +68,8 @@ public class Deliverable extends BaseEntity {
     @Column(name = "approval_comment")
     private String approvalComment;
 
-    @Column(name = "deliverable_template_id")
-    private Long deliverableTemplateId;
+    @Column(name = "catalog_node_id")
+    private Long catalogNodeId;
 
     @Column(name = "created_by")
     private Long createdBy;

@@ -2,14 +2,8 @@ package com.aetherpmo.domain.tailoring;
 
 import com.aetherpmo.domain.deliverable.Deliverable;
 import com.aetherpmo.domain.deliverable.DeliverableRepository;
-import com.aetherpmo.domain.methodology.DeliverableTemplate;
-import com.aetherpmo.domain.methodology.DeliverableTemplateRepository;
-import com.aetherpmo.domain.methodology.MethodologyActivity;
-import com.aetherpmo.domain.methodology.MethodologyActivityRepository;
-import com.aetherpmo.domain.methodology.MethodologyPhase;
-import com.aetherpmo.domain.methodology.MethodologyPhaseRepository;
-import com.aetherpmo.domain.methodology.TaskTemplate;
-import com.aetherpmo.domain.methodology.TaskTemplateRepository;
+import com.aetherpmo.domain.methodology.CatalogNode;
+import com.aetherpmo.domain.methodology.CatalogNodeRepository;
 import com.aetherpmo.domain.project.Project;
 import com.aetherpmo.domain.project.ProjectRepository;
 import com.aetherpmo.domain.project.dto.ProjectDto;
@@ -36,10 +30,7 @@ public class TailoringService {
     private final TaskRepository taskRepository;
     private final DeliverableRepository deliverableRepository;
     private final ProjectTailoringRepository tailoringRepository;
-    private final MethodologyPhaseRepository phaseRepository;
-    private final MethodologyActivityRepository activityRepository;
-    private final TaskTemplateRepository taskTemplateRepository;
-    private final DeliverableTemplateRepository deliverableTemplateRepository;
+    private final CatalogNodeRepository nodeRepository;
     private final CurrentUser currentUser;
 
     @Transactional
@@ -66,114 +57,127 @@ public class TailoringService {
         p.setUpdatedBy(userId);
         Project project = projectRepository.save(p);
 
-        List<Long> taskTplIds = req.selectedTaskTemplateIds() == null
-                ? List.of() : req.selectedTaskTemplateIds();
-        List<Long> delivTplIds = req.selectedDeliverableTemplateIds() == null
-                ? List.of() : req.selectedDeliverableTemplateIds();
-
-        // 2. Load selected task templates with activity + phase context.
-        List<TaskTemplate> taskTemplates = taskTplIds.isEmpty()
-                ? List.of() : taskTemplateRepository.findAllById(taskTplIds);
-
-        Map<Long, MethodologyActivity> activityById = new HashMap<>();
-        Map<Long, MethodologyPhase> phaseById = new HashMap<>();
-        for (MethodologyActivity a : activityRepository.findAll()) activityById.put(a.getId(), a);
-        for (MethodologyPhase ph : phaseRepository.findAll()) phaseById.put(ph.getId(), ph);
-
-        // Group selected task templates by phase, ordered by phase.sort_order.
-        Map<MethodologyPhase, List<TaskTemplate>> byPhase = new LinkedHashMap<>();
-        List<MethodologyPhase> orderedPhases = phaseRepository.findAllByOrderBySortOrderAscIdAsc();
-        for (MethodologyPhase ph : orderedPhases) byPhase.put(ph, new ArrayList<>());
-        for (TaskTemplate tt : taskTemplates) {
-            MethodologyActivity act = activityById.get(tt.getActivityId());
-            if (act == null) continue;
-            MethodologyPhase ph = phaseById.get(act.getPhaseId());
-            if (ph == null) continue;
-            byPhase.computeIfAbsent(ph, k -> new ArrayList<>()).add(tt);
+        List<Long> selectedNodeIds = req.selectedNodeIds() == null
+                ? List.of() : req.selectedNodeIds();
+        if (selectedNodeIds.isEmpty()) {
+            return ProjectDto.from(project);
         }
 
-        // taskTemplateId -> generated child Task id (for deliverable linkage + tailoring).
-        Map<Long, Long> generatedTaskIdByTemplate = new HashMap<>();
+        // 2. Load selected nodes and partition by type.
+        List<CatalogNode> selectedNodes = nodeRepository.findAllById(selectedNodeIds);
+
+        // Index every node by id for ancestor walking.
+        Map<Long, CatalogNode> nodeById = new HashMap<>();
+        for (CatalogNode n : nodeRepository.findAll()) nodeById.put(n.getId(), n);
+
+        List<CatalogNode> taskNodes = new ArrayList<>();
+        List<CatalogNode> deliverableNodes = new ArrayList<>();
+        for (CatalogNode n : selectedNodes) {
+            if ("TASK".equals(n.getNodeType())) taskNodes.add(n);
+            else if ("DELIVERABLE".equals(n.getNodeType())) deliverableNodes.add(n);
+        }
+
+        // 3. Group TASK nodes by PHASE ancestor.
+        Map<CatalogNode, List<CatalogNode>> byPhase = new LinkedHashMap<>();
+        for (CatalogNode taskNode : taskNodes) {
+            CatalogNode activity = parentOf(taskNode, nodeById);
+            CatalogNode phase = parentOf(activity, nodeById);
+            if (phase == null) continue;
+            byPhase.computeIfAbsent(phase, k -> new ArrayList<>()).add(taskNode);
+        }
+
+        // Order phases by their sort order.
+        List<CatalogNode> orderedPhases = new ArrayList<>(byPhase.keySet());
+        orderedPhases.sort(Comparator
+                .comparingInt(CatalogNode::getSortOrder)
+                .thenComparing(CatalogNode::getId));
+
+        // catalogNodeId(TASK) -> generated child Task id (for deliverable linkage).
+        Map<Long, Long> generatedTaskIdByNode = new HashMap<>();
         int phaseOrder = 0;
 
-        // 3-4. Create top-level phase tasks + child task-template tasks.
-        for (Map.Entry<MethodologyPhase, List<TaskTemplate>> e : byPhase.entrySet()) {
-            List<TaskTemplate> tts = e.getValue();
-            if (tts.isEmpty()) continue;
-            MethodologyPhase ph = e.getKey();
+        for (CatalogNode phase : orderedPhases) {
+            List<CatalogNode> tns = byPhase.get(phase);
+            if (tns == null || tns.isEmpty()) continue;
 
             Task phaseTask = new Task();
             phaseTask.setProjectId(project.getId());
             phaseTask.setParentTaskId(null);
             phaseTask.setDepth(0);
             phaseTask.setSortOrder(phaseOrder++);
-            phaseTask.setTaskName(ph.getPhaseName());
+            phaseTask.setTaskName(phase.getName());
             phaseTask.setStatus("TODO");
             phaseTask.setProgressRate(0);
             phaseTask.setCreatedBy(userId);
             phaseTask.setUpdatedBy(userId);
             Task savedPhaseTask = taskRepository.save(phaseTask);
 
-            // Order children by activity.sort_order then task_template.sort_order.
-            tts.sort(Comparator
-                    .comparingInt((TaskTemplate t) -> {
-                        MethodologyActivity a = activityById.get(t.getActivityId());
+            // Order children by ancestor activity sort then task sort.
+            tns.sort(Comparator
+                    .comparingInt((CatalogNode t) -> {
+                        CatalogNode a = parentOf(t, nodeById);
                         return a == null ? 0 : a.getSortOrder();
                     })
-                    .thenComparingInt(TaskTemplate::getSortOrder)
-                    .thenComparing(TaskTemplate::getId));
+                    .thenComparingInt(CatalogNode::getSortOrder)
+                    .thenComparing(CatalogNode::getId));
 
             int childOrder = 0;
-            for (TaskTemplate tt : tts) {
+            for (CatalogNode taskNode : tns) {
                 Task childTask = new Task();
                 childTask.setProjectId(project.getId());
                 childTask.setParentTaskId(savedPhaseTask.getId());
                 childTask.setDepth(1);
                 childTask.setSortOrder(childOrder++);
-                childTask.setTaskName(tt.getTaskName());
-                childTask.setTaskTemplateId(tt.getId());
+                childTask.setTaskName(taskNode.getName());
+                childTask.setCatalogNodeId(taskNode.getId());
                 childTask.setStatus("TODO");
                 childTask.setProgressRate(0);
                 childTask.setCreatedBy(userId);
                 childTask.setUpdatedBy(userId);
                 Task savedChild = taskRepository.save(childTask);
-                generatedTaskIdByTemplate.put(tt.getId(), savedChild.getId());
+                generatedTaskIdByNode.put(taskNode.getId(), savedChild.getId());
 
-                // Tailoring record for the task template selection.
                 ProjectTailoring tr = new ProjectTailoring();
                 tr.setProjectId(project.getId());
-                tr.setTaskTemplateId(tt.getId());
+                tr.setCatalogNodeId(taskNode.getId());
                 tr.setIsSelected(true);
                 tr.setGeneratedTaskId(savedChild.getId());
                 tailoringRepository.save(tr);
             }
         }
 
-        // 5-6. Create deliverables from selected deliverable templates.
-        List<DeliverableTemplate> delivTemplates = delivTplIds.isEmpty()
-                ? List.of() : deliverableTemplateRepository.findAllById(delivTplIds);
-        for (DeliverableTemplate dt : delivTemplates) {
+        // 4. Create deliverables from selected DELIVERABLE nodes.
+        for (CatalogNode dNode : deliverableNodes) {
             Deliverable d = new Deliverable();
             d.setProjectId(project.getId());
-            d.setDeliverableName(dt.getDeliverableName());
-            d.setDeliverableType(dt.getDeliverableCategory());
+            d.setDeliverableName(dNode.getName());
+            d.setDeliverableType(dNode.getDeliverableCategory());
             d.setStatus("DRAFT");
-            d.setVersionNo(dt.getVersionNo() != null ? dt.getVersionNo() : "1.0");
-            d.setDeliverableTemplateId(dt.getId());
-            Long generatedTaskId = generatedTaskIdByTemplate.get(dt.getTaskTemplateId());
-            if (generatedTaskId != null) d.setTaskId(generatedTaskId);
+            d.setVersionNo("1.0");
+            d.setCatalogNodeId(dNode.getId());
+            // Link to the generated task if the parent TASK node was selected.
+            Long parentTaskNodeId = dNode.getParentNodeId();
+            if (parentTaskNodeId != null) {
+                Long generatedTaskId = generatedTaskIdByNode.get(parentTaskNodeId);
+                if (generatedTaskId != null) d.setTaskId(generatedTaskId);
+            }
             d.setCreatedBy(userId);
             d.setUpdatedBy(userId);
             Deliverable savedDeliverable = deliverableRepository.save(d);
 
             ProjectTailoring tr = new ProjectTailoring();
             tr.setProjectId(project.getId());
-            tr.setDeliverableTemplateId(dt.getId());
+            tr.setCatalogNodeId(dNode.getId());
             tr.setIsSelected(true);
             tr.setGeneratedDeliverableId(savedDeliverable.getId());
             tailoringRepository.save(tr);
         }
 
         return ProjectDto.from(project);
+    }
+
+    private CatalogNode parentOf(CatalogNode node, Map<Long, CatalogNode> nodeById) {
+        if (node == null || node.getParentNodeId() == null) return null;
+        return nodeById.get(node.getParentNodeId());
     }
 }

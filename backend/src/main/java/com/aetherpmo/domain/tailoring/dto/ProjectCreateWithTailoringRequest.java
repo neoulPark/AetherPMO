@@ -21,7 +21,6 @@ public record ProjectCreateWithTailoringRequest(
         String team,
         String location,
         String businessType,
-        List<Long> selectedTaskTemplateIds,
-        List<Long> selectedDeliverableTemplateIds
+        List<Long> selectedNodeIds
 ) {
 }
