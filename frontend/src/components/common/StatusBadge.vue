@@ -12,6 +12,10 @@ const props = defineProps<{
 
 const badgeClass = computed(() => {
   const s = props.status.toUpperCase()
+  if (s === 'DRAFT') return 'badge-gray'
+  if (s === 'SUBMITTED') return 'badge-orange'
+  if (s === 'UNDER_REVIEW') return 'badge-blue'
+  if (s === 'REJECTED') return 'badge-red'
   if (s === 'IN_PROGRESS' || s === '수행중') return 'badge-purple'
   if (s === 'DELAYED' || s === '지연') return 'badge-red'
   if (s === 'APPROVED' || s === '승인완료') return 'badge-green'
