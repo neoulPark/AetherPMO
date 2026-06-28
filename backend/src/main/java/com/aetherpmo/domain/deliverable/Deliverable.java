@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @Table(name = "pms_deliverable")
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class Deliverable extends BaseEntity {
 
     @Id
@@ -67,6 +67,9 @@ public class Deliverable extends BaseEntity {
 
     @Column(name = "approval_comment")
     private String approvalComment;
+
+    @Column(name = "deliverable_template_id")
+    private Long deliverableTemplateId;
 
     @Column(name = "created_by")
     private Long createdBy;

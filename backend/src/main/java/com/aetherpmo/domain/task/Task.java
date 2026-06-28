@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @Table(name = "pms_task")
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class Task extends BaseEntity {
 
     @Id
@@ -71,6 +71,9 @@ public class Task extends BaseEntity {
 
     @Column(name = "description")
     private String description;
+
+    @Column(name = "task_template_id")
+    private Long taskTemplateId;
 
     @Column(name = "created_by")
     private Long createdBy;

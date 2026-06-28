@@ -19,7 +19,7 @@ import java.time.LocalDate;
 @Table(name = "pms_project")
 @Getter
 @Setter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@NoArgsConstructor
 public class Project extends BaseEntity {
 
     @Id
