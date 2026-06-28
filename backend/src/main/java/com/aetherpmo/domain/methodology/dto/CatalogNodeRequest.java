@@ -10,6 +10,7 @@ public record CatalogNodeRequest(
         Integer seqNo,
         String description,
         String deliverableCategory,
-        String stage
+        String stage,
+        Long workflowId
 ) {
 }

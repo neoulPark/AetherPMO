@@ -57,5 +57,8 @@ public class CatalogNode extends BaseEntity {
     @Column(name = "template_file_ref", length = 200)
     private String templateFileRef;
 
+    @Column(name = "workflow_id")
+    private Long workflowId;
+
     // template_tags(JSONB) 컬럼은 현재 미사용 — JPA 매핑에서 제외(컬럼은 DB에 존재, null 유지)
 }

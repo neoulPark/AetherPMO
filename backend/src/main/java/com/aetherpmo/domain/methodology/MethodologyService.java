@@ -35,6 +35,7 @@ public class MethodologyService {
                 node.getIsOptional(),
                 node.getSeqNo(),
                 node.getSortOrder(),
+                node.getWorkflowId(),
                 children);
     }
 
@@ -54,6 +55,7 @@ public class MethodologyService {
         node.setSeqNo(req.seqNo());
         node.setDeliverableCategory(req.deliverableCategory());
         node.setStage(req.stage());
+        node.setWorkflowId(req.workflowId());
         validateHierarchy(req.nodeType(), req.parentNodeId());
         CatalogNode saved = nodeRepository.save(node);
         return toDtoTree(saved);
@@ -74,6 +76,7 @@ public class MethodologyService {
         if (req.seqNo() != null) node.setSeqNo(req.seqNo());
         if (req.deliverableCategory() != null) node.setDeliverableCategory(req.deliverableCategory());
         if (req.stage() != null) node.setStage(req.stage());
+        if (req.workflowId() != null) node.setWorkflowId(req.workflowId());
         return toDtoTree(nodeRepository.save(node));
     }
 

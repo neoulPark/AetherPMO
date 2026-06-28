@@ -11,6 +11,7 @@ public record CatalogNodeDto(
         Boolean isOptional,
         Integer seqNo,
         Integer sortOrder,
+        Long workflowId,
         List<CatalogNodeDto> children
 ) {
 }
