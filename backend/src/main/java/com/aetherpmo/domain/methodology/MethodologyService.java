@@ -6,7 +6,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -14,18 +17,41 @@ public class MethodologyService {
 
     private final CatalogNodeRepository nodeRepository;
 
+    private static final Comparator<CatalogNode> NODE_ORDER =
+            Comparator.comparingInt((CatalogNode n) -> n.getSortOrder() == null ? 0 : n.getSortOrder())
+                    .thenComparing(CatalogNode::getId);
+
     @Transactional(readOnly = true)
     public List<CatalogNodeDto> getCatalog() {
-        return nodeRepository.findByParentNodeIdIsNullOrderBySortOrderAscIdAsc().stream()
-                .map(this::toDtoTree)
+        // 전체 노드를 한 번에 로드 후 메모리에서 트리 구성 (기존 노드별 조회 N+1 제거)
+        List<CatalogNode> all = nodeRepository.findAll();
+        Map<Long, List<CatalogNode>> childrenByParent = all.stream()
+                .filter(n -> n.getParentNodeId() != null)
+                .collect(Collectors.groupingBy(CatalogNode::getParentNodeId));
+        return all.stream()
+                .filter(n -> n.getParentNodeId() == null)
+                .sorted(NODE_ORDER)
+                .map(n -> toDtoTree(n, childrenByParent))
                 .toList();
     }
 
+    // 단건(생성/수정 응답)용 — 해당 노드의 하위만 조회 (단발성이라 N+1 무관)
     private CatalogNodeDto toDtoTree(CatalogNode node) {
-        List<CatalogNodeDto> children =
-                nodeRepository.findByParentNodeIdOrderBySortOrderAscIdAsc(node.getId()).stream()
-                        .map(this::toDtoTree)
-                        .toList();
+        List<CatalogNodeDto> children = nodeRepository
+                .findByParentNodeIdOrderBySortOrderAscIdAsc(node.getId()).stream()
+                .map(this::toDtoTree)
+                .toList();
+        return new CatalogNodeDto(
+                node.getId(), node.getParentNodeId(), node.getNodeType(), node.getCode(),
+                node.getName(), node.getIsOptional(), node.getSeqNo(), node.getSortOrder(),
+                node.getWorkflowId(), children);
+    }
+
+    private CatalogNodeDto toDtoTree(CatalogNode node, Map<Long, List<CatalogNode>> childrenByParent) {
+        List<CatalogNodeDto> children = childrenByParent.getOrDefault(node.getId(), List.of()).stream()
+                .sorted(NODE_ORDER)
+                .map(c -> toDtoTree(c, childrenByParent))
+                .toList();
         return new CatalogNodeDto(
                 node.getId(),
                 node.getParentNodeId(),

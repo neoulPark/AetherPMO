@@ -32,6 +32,8 @@ public class CorsConfig {
         config.setAllowedMethods(List.of("*"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        // 프리플라이트(OPTIONS) 응답을 1시간 캐시 → 매 요청마다 반복되던 preflight 왕복 제거
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
