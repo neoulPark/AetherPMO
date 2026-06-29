@@ -75,27 +75,51 @@
             />
           </div>
           <div class="field">
-            <label>시작일</label>
+            <label>계획 시작</label>
             <el-date-picker
               v-model="startDraft"
               type="date"
               value-format="YYYY-MM-DD"
               size="small"
-              placeholder="시작일"
+              placeholder="계획 시작일"
               :disabled="saving"
               @change="saveDates"
             />
           </div>
           <div class="field">
-            <label>종료일</label>
+            <label>계획 종료</label>
             <el-date-picker
               v-model="endDraft"
               type="date"
               value-format="YYYY-MM-DD"
               size="small"
-              placeholder="종료일"
+              placeholder="계획 종료일"
               :disabled="saving"
               @change="saveDates"
+            />
+          </div>
+          <div class="field">
+            <label>실제 시작</label>
+            <el-date-picker
+              v-model="actualStartDraft"
+              type="date"
+              value-format="YYYY-MM-DD"
+              size="small"
+              placeholder="실제 시작일"
+              :disabled="saving"
+              @change="saveActualDates"
+            />
+          </div>
+          <div class="field">
+            <label>실제 종료</label>
+            <el-date-picker
+              v-model="actualEndDraft"
+              type="date"
+              value-format="YYYY-MM-DD"
+              size="small"
+              placeholder="실제 종료일"
+              :disabled="saving"
+              @change="saveActualDates"
             />
           </div>
           <div class="field">
@@ -203,6 +227,8 @@ const progressDraft = ref(0)
 const assigneeDraft = ref<number | undefined>(undefined)
 const startDraft = ref<string | null>(null)
 const endDraft = ref<string | null>(null)
+const actualStartDraft = ref<string | null>(null)
+const actualEndDraft = ref<string | null>(null)
 const effortDraft = ref<number | undefined>(undefined)
 
 const uploadFor = ref<number | null>(null)
@@ -266,6 +292,8 @@ async function onOpen() {
     assigneeDraft.value = t.assigneeId ?? undefined
     startDraft.value = t.plannedStartDate
     endDraft.value = t.plannedEndDate
+    actualStartDraft.value = t.actualStartDate
+    actualEndDraft.value = t.actualEndDate
     effortDraft.value = t.plannedEffort ?? undefined
   } catch (e) {
     console.error('Failed to load task detail', e)
@@ -332,6 +360,12 @@ function saveDates() {
   patch(
     { plannedStartDate: startDraft.value, plannedEndDate: endDraft.value },
     '일정이 저장되었습니다.'
+  )
+}
+function saveActualDates() {
+  patch(
+    { actualStartDate: actualStartDraft.value, actualEndDate: actualEndDraft.value },
+    '실제 일정이 저장되었습니다.'
   )
 }
 function saveEffort() {

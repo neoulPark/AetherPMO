@@ -41,7 +41,8 @@
               <StatusBadge :status="t.status" :label="statusLabel(t.status)" />
             </td>
             <td class="col-dates">
-              <div class="date-cell">
+              <div class="date-row">
+                <span class="date-tag plan">계획</span>
                 <el-date-picker
                   size="small"
                   type="date"
@@ -60,6 +61,28 @@
                   :model-value="t.plannedEndDate"
                   :disabled="saving"
                   @update:model-value="(v: string | null) => onDate(t, 'plannedEndDate', v)"
+                />
+              </div>
+              <div class="date-row">
+                <span class="date-tag actual">실제</span>
+                <el-date-picker
+                  size="small"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="시작일"
+                  :model-value="t.actualStartDate"
+                  :disabled="saving"
+                  @update:model-value="(v: string | null) => onDate(t, 'actualStartDate', v)"
+                />
+                <span class="date-sep">~</span>
+                <el-date-picker
+                  size="small"
+                  type="date"
+                  value-format="YYYY-MM-DD"
+                  placeholder="종료일"
+                  :model-value="t.actualEndDate"
+                  :disabled="saving"
+                  @update:model-value="(v: string | null) => onDate(t, 'actualEndDate', v)"
                 />
               </div>
             </td>
@@ -99,7 +122,13 @@
         <div v-else class="gantt">
           <!-- left column -->
           <div class="gantt-left">
-            <div class="gantt-left-head">업무명</div>
+            <div class="gantt-left-head">
+              <span>업무명</span>
+              <div class="gantt-legend">
+                <span class="legend-item"><i class="legend-swatch planned"></i>계획</span>
+                <span class="legend-item"><i class="legend-swatch actual"></i>실제</span>
+              </div>
+            </div>
             <div
               v-for="row in gantt.rows"
               :key="row.id"
@@ -141,16 +170,30 @@
                 :key="row.id"
                 class="gantt-row"
               >
+                <!-- 계획(planned): outlined / translucent baseline bar -->
                 <div
-                  v-if="row.bar"
-                  class="gantt-bar"
+                  v-if="row.plannedBar"
+                  class="gantt-bar planned"
                   @click="openDrawerById(row.id, !row.hasChildren)"
                   :style="{
-                    left: `${row.bar.left}px`,
-                    width: `${row.bar.width}px`,
+                    left: `${row.plannedBar.left}px`,
+                    width: `${row.plannedBar.width}px`,
+                    borderColor: barColor(row.status),
+                  }"
+                  :title="`[계획] ${row.taskName} (${row.plannedBar.startLabel} ~ ${row.plannedBar.endLabel})`"
+                ></div>
+
+                <!-- 실제(actual): solid status-colored bar with progress fill -->
+                <div
+                  v-if="row.actualBar"
+                  class="gantt-bar actual"
+                  @click="openDrawerById(row.id, !row.hasChildren)"
+                  :style="{
+                    left: `${row.actualBar.left}px`,
+                    width: `${row.actualBar.width}px`,
                     background: barColor(row.status),
                   }"
-                  :title="`${row.taskName} (${row.bar.startLabel} ~ ${row.bar.endLabel}, ${row.progressRate}%)`"
+                  :title="`[실제] ${row.taskName} (${row.actualBar.startLabel} ~ ${row.actualBar.endLabel}, ${row.progressRate}%)`"
                 >
                   <div
                     class="gantt-bar-fill"
@@ -158,6 +201,13 @@
                   ></div>
                   <span class="gantt-bar-label">{{ row.progressRate }}%</span>
                 </div>
+
+                <!-- progress label on planned bar when no actual yet -->
+                <span
+                  v-else-if="row.plannedBar"
+                  class="gantt-bar-label planned-only"
+                  :style="{ left: `${row.plannedBar.left + 6}px` }"
+                >{{ row.progressRate }}%</span>
               </div>
             </div>
           </div>
@@ -265,17 +315,29 @@ const flatTasks = computed(() => {
   return out
 })
 
-// Roll-up range for a node: own dates if present, else min/max over descendants.
-function rollupRange(t: TaskNode): { start: number | null; end: number | null } {
-  let start = parseDate(t.plannedStartDate)
-  let end = parseDate(t.plannedEndDate)
+// Roll-up range for a node over a given start/end field pair:
+// own dates if present, else min/max over descendants.
+function rollupRange(
+  t: TaskNode,
+  startField: 'plannedStartDate' | 'actualStartDate',
+  endField: 'plannedEndDate' | 'actualEndDate'
+): { start: number | null; end: number | null } {
+  let start = parseDate(t[startField])
+  let end = parseDate(t[endField])
   if (start !== null && end !== null) return { start, end }
   for (const c of t.children || []) {
-    const r = rollupRange(c)
+    const r = rollupRange(c, startField, endField)
     if (r.start !== null) start = start === null ? r.start : Math.min(start, r.start)
     if (r.end !== null) end = end === null ? r.end : Math.max(end, r.end)
   }
   return { start, end }
+}
+
+interface GanttBar {
+  left: number
+  width: number
+  startLabel: string
+  endLabel: string
 }
 
 interface GanttRow {
@@ -285,14 +347,20 @@ interface GanttRow {
   status: string
   progressRate: number
   hasChildren: boolean
-  bar: { left: number; width: number; startLabel: string; endLabel: string } | null
+  plannedBar: GanttBar | null
+  actualBar: GanttBar | null
 }
 
 const gantt = computed(() => {
-  const ranges = flatTasks.value.map((t) => rollupRange(t))
+  const plannedRanges = flatTasks.value.map((t) =>
+    rollupRange(t, 'plannedStartDate', 'plannedEndDate')
+  )
+  const actualRanges = flatTasks.value.map((t) =>
+    rollupRange(t, 'actualStartDate', 'actualEndDate')
+  )
   let min = Infinity
   let max = -Infinity
-  for (const r of ranges) {
+  for (const r of [...plannedRanges, ...actualRanges]) {
     if (r.start !== null) min = Math.min(min, r.start)
     if (r.end !== null) max = Math.max(max, r.end)
   }
@@ -306,19 +374,19 @@ const gantt = computed(() => {
   const totalDays = Math.round((maxDay - minDay) / DAY_MS) + 1
   const totalWidth = totalDays * DAY_W
 
-  const rows: GanttRow[] = flatTasks.value.map((t, i) => {
-    const r = ranges[i]
-    let bar: GanttRow['bar'] = null
-    if (r.start !== null && r.end !== null) {
-      const offset = Math.round((r.start - minDay) / DAY_MS)
-      const dur = Math.round((r.end - r.start) / DAY_MS) + 1
-      bar = {
-        left: offset * DAY_W,
-        width: Math.max(dur * DAY_W, 4),
-        startLabel: fmt(r.start),
-        endLabel: fmt(r.end),
-      }
+  const toBar = (r: { start: number | null; end: number | null }): GanttBar | null => {
+    if (r.start === null || r.end === null) return null
+    const offset = Math.round((r.start - minDay) / DAY_MS)
+    const dur = Math.round((r.end - r.start) / DAY_MS) + 1
+    return {
+      left: offset * DAY_W,
+      width: Math.max(dur * DAY_W, 4),
+      startLabel: fmt(r.start),
+      endLabel: fmt(r.end),
     }
+  }
+
+  const rows: GanttRow[] = flatTasks.value.map((t, i) => {
     return {
       id: t.id,
       taskName: t.taskName,
@@ -326,7 +394,8 @@ const gantt = computed(() => {
       status: t.status,
       progressRate: t.progressRate,
       hasChildren: hasChildren(t),
-      bar,
+      plannedBar: toBar(plannedRanges[i]),
+      actualBar: toBar(actualRanges[i]),
     }
   })
 
@@ -392,14 +461,13 @@ function onInput(t: TaskNode, value: string) {
   if (!Number.isNaN(n)) save(t.id, n)
 }
 
-async function onDate(t: TaskNode, field: 'plannedStartDate' | 'plannedEndDate', value: string | null) {
+type DateField = 'plannedStartDate' | 'plannedEndDate' | 'actualStartDate' | 'actualEndDate'
+
+async function onDate(t: TaskNode, field: DateField, value: string | null) {
   if ((t[field] || null) === (value || null)) return
   saving.value = true
   try {
-    await updateTask(t.id, {
-      plannedStartDate: field === 'plannedStartDate' ? value : t.plannedStartDate,
-      plannedEndDate: field === 'plannedEndDate' ? value : t.plannedEndDate,
-    })
+    await updateTask(t.id, { [field]: value })
     await load()
   } catch (e) {
     console.error('Failed to update task dates', e)
@@ -485,7 +553,7 @@ watch(projectId, load)
 }
 
 .col-status { width: 120px; }
-.col-dates { width: 300px; }
+.col-dates { width: 320px; }
 .col-progress { width: 260px; }
 
 .is-parent { font-weight: 600; }
@@ -493,13 +561,31 @@ watch(projectId, load)
 .task-link { cursor: pointer; }
 .task-link:hover { color: var(--color-primary); text-decoration: underline; }
 
-.date-cell {
+.date-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
-.date-cell :deep(.el-date-editor) { width: 130px; }
+.date-row + .date-row { margin-top: 6px; }
+.date-row :deep(.el-date-editor) { width: 120px; }
 .date-sep { color: var(--text-muted); font-size: 12px; }
+.date-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+  width: 30px;
+  text-align: center;
+}
+.date-tag.plan {
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+}
+.date-tag.actual {
+  color: #fff;
+  background: var(--color-primary);
+}
 
 .progress-cell {
   display: flex;
@@ -576,6 +662,8 @@ watch(projectId, load)
   height: 28px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   padding: 0 12px;
   font-size: 11px;
   font-weight: 600;
@@ -638,14 +726,26 @@ watch(projectId, load)
 }
 .gantt-bar {
   position: absolute;
-  top: 7px;
-  height: 20px;
   border-radius: 4px;
   overflow: hidden;
   display: flex;
   align-items: center;
-  z-index: 2;
   cursor: pointer;
+}
+/* 계획(planned): outlined / translucent baseline bar, sits on top */
+.gantt-bar.planned {
+  top: 4px;
+  height: 9px;
+  background: transparent;
+  border: 1px dashed var(--text-muted);
+  opacity: 0.85;
+  z-index: 2;
+}
+/* 실제(actual): solid status-colored bar, sits below planned */
+.gantt-bar.actual {
+  top: 16px;
+  height: 14px;
+  z-index: 3;
 }
 .gantt-bar-fill {
   position: absolute;
@@ -661,5 +761,39 @@ watch(projectId, load)
   padding: 0 6px;
   white-space: nowrap;
   z-index: 1;
+}
+.gantt-bar-label.planned-only {
+  position: absolute;
+  top: 16px;
+  color: var(--text-secondary);
+  z-index: 2;
+}
+
+.gantt-legend {
+  display: flex;
+  gap: 12px;
+  text-transform: none;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 9px;
+  border-radius: 3px;
+}
+.legend-swatch.planned {
+  background: transparent;
+  border: 1px dashed var(--text-muted);
+}
+.legend-swatch.actual {
+  background: var(--color-primary);
 }
 </style>

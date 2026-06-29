@@ -40,6 +40,8 @@ export interface TaskNode {
   assigneeId: number | null
   plannedStartDate: string | null
   plannedEndDate: string | null
+  actualStartDate: string | null
+  actualEndDate: string | null
   plannedEffort: number | null
   actualEffort: number | null
   depth: number

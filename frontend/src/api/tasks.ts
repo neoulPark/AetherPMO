@@ -10,6 +10,8 @@ export interface TaskDto {
   assigneeId: number | null
   plannedStartDate: string | null
   plannedEndDate: string | null
+  actualStartDate: string | null
+  actualEndDate: string | null
   plannedEffort: number | null
   actualEffort: number | null
   depth: number
@@ -30,6 +32,8 @@ export interface UpdateTaskBody {
   assigneeId?: number | null
   plannedStartDate?: string | null
   plannedEndDate?: string | null
+  actualStartDate?: string | null
+  actualEndDate?: string | null
   plannedEffort?: number | null
   actualEffort?: number | null
   description?: string | null
