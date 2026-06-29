@@ -80,6 +80,11 @@
         <p class="empty-note">컨소시엄 파트너사 정보가 없습니다.</p>
       </div>
 
+      <!-- 컨택포인트 -->
+      <div v-if="activeTab === 'contacts'">
+        <ContactPoints />
+      </div>
+
       <!-- VRB -->
       <div v-if="activeTab === 'vrb'" class="card">
         <h3 class="card-title">VRB (사전 검토)</h3>
@@ -102,6 +107,7 @@ import { useRoute } from 'vue-router'
 import { getProject, mapBiddingProject, bidStatusLabel } from '@/api/projects'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ProjectTasks from '@/views/projects/tabs/ProjectTasks.vue'
+import ContactPoints from '@/views/projects/tabs/ContactPoints.vue'
 import type { Project } from '@/types'
 
 const route = useRoute()
@@ -129,6 +135,7 @@ const tabs = [
   { key: 'tasks', label: '업무' },
   { key: 'proposal', label: '제안 준비 서류' },
   { key: 'consortium', label: '컨소시엄' },
+  { key: 'contacts', label: '컨택포인트' },
   { key: 'vrb', label: 'VRB' },
 ]
 

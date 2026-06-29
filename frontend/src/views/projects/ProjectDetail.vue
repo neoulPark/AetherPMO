@@ -67,6 +67,7 @@
       <router-link :to="`/projects/${project.id}/risks`" class="tab-link" active-class="active">이슈/리스크</router-link>
       <router-link :to="`/projects/${project.id}/action-items`" class="tab-link" active-class="active">액션 아이템</router-link>
       <router-link :to="`/projects/${project.id}/official-docs`" class="tab-link" active-class="active">공문</router-link>
+      <router-link :to="`/projects/${project.id}/contacts`" class="tab-link" active-class="active">컨택포인트</router-link>
     </div>
 
     <div class="tab-content">

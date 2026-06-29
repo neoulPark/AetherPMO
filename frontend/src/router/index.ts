@@ -24,6 +24,7 @@ const router = createRouter({
             { path: 'risks', component: () => import('@/views/projects/tabs/ProjectRisks.vue') },
             { path: 'action-items', component: () => import('@/views/projects/tabs/ProjectActionItems.vue') },
             { path: 'official-docs', component: () => import('@/views/projects/tabs/ProjectOfficialDocs.vue') },
+            { path: 'contacts', component: () => import('@/views/projects/tabs/ContactPoints.vue') },
           ],
         },
         { path: 'methodology', component: () => import('@/views/methodology/MethodologyView.vue') },
