@@ -16,7 +16,7 @@
         수행 중 <span class="count">{{ executionCount }}</span>
       </router-link>
       <router-link to="/projects/completed" class="stage-tab" active-class="active">
-        종료 <span class="count">0</span>
+        종료 <span class="count">{{ completedCount }}</span>
       </router-link>
     </div>
 
@@ -126,7 +126,7 @@
     <CreateProjectModal
       v-if="showModal"
       @close="showModal = false"
-      @created="loadProjects"
+      @created="onCreated"
     />
   </div>
 </template>
@@ -134,7 +134,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { mockBiddingProjects } from '@/stores/mock'
 import { listProjects, mapProject } from '@/api/projects'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import ProgressBar from '@/components/common/ProgressBar.vue'
@@ -154,10 +153,24 @@ const currentStage = computed(() => route.params.stage as string)
 const loading = ref(false)
 const apiProjects = ref<Project[]>([])
 
-const biddingCount = computed(() => mockBiddingProjects.length)
-const executionCount = computed(() =>
-  currentStage.value === 'execution' ? apiProjects.value.length : 0
-)
+const biddingCount = ref(0)
+const executionCount = ref(0)
+const completedCount = ref(0)
+
+async function loadCounts() {
+  try {
+    const [bidding, execution, completed] = await Promise.all([
+      listProjects('BIDDING'),
+      listProjects('EXECUTION'),
+      listProjects('COMPLETED'),
+    ])
+    biddingCount.value = bidding.length
+    executionCount.value = execution.length
+    completedCount.value = completed.length
+  } catch (e) {
+    console.error('Failed to load stage counts', e)
+  }
+}
 
 async function loadProjects() {
   const backendStage = currentStage.value === 'completed' ? 'COMPLETED' : 'EXECUTION'
@@ -173,7 +186,15 @@ async function loadProjects() {
   }
 }
 
-onMounted(loadProjects)
+function onCreated() {
+  loadCounts()
+  loadProjects()
+}
+
+onMounted(() => {
+  loadCounts()
+  loadProjects()
+})
 watch(currentStage, loadProjects)
 
 const filteredProjects = computed(() => {

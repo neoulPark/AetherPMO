@@ -16,103 +16,109 @@
       </div>
 
       <!-- TREE VIEW -->
-      <table v-else-if="view === 'tree'" class="task-table">
-        <thead>
-          <tr>
-            <th class="col-name">업무명</th>
-            <th class="col-status">상태</th>
-            <th class="col-dates">일정</th>
-            <th class="col-progress">진척률</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="t in flatTasks" :key="t.id">
-            <td class="col-name">
-              <span
-                class="task-link"
-                :style="{ paddingLeft: `${t.depth * 20}px` }"
-                :class="{ 'is-parent': hasChildren(t) }"
-                @click="openDrawer(t)"
-              >
-                {{ t.taskName }}
+      <div v-else-if="view === 'tree'" class="tree-wrap">
+        <div class="tree-head">
+          <span class="col-name">업무명</span>
+          <span class="col-status">상태</span>
+          <span class="col-dates">일정</span>
+          <span class="col-progress">진척률</span>
+        </div>
+        <el-tree
+          class="wbs-tree"
+          :data="tree"
+          node-key="id"
+          :props="{ label: 'taskName', children: 'children' }"
+          :expand-on-click-node="false"
+          default-expand-all
+        >
+          <template #default="{ data }">
+            <div class="tree-row">
+              <span class="col-name">
+                <span
+                  class="task-link"
+                  :class="{ 'is-parent': hasChildren(data) }"
+                  @click.stop="openDrawer(data)"
+                >
+                  {{ data.taskName }}
+                </span>
               </span>
-            </td>
-            <td class="col-status">
-              <StatusBadge :status="t.status" :label="statusLabel(t.status)" />
-            </td>
-            <td class="col-dates">
-              <div class="date-row">
-                <span class="date-tag plan">계획</span>
-                <el-date-picker
-                  size="small"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="시작일"
-                  :model-value="t.plannedStartDate"
-                  :disabled="saving"
-                  @update:model-value="(v: string | null) => onDate(t, 'plannedStartDate', v)"
-                />
-                <span class="date-sep">~</span>
-                <el-date-picker
-                  size="small"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="종료일"
-                  :model-value="t.plannedEndDate"
-                  :disabled="saving"
-                  @update:model-value="(v: string | null) => onDate(t, 'plannedEndDate', v)"
-                />
-              </div>
-              <div class="date-row">
-                <span class="date-tag actual">실제</span>
-                <el-date-picker
-                  size="small"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="시작일"
-                  :model-value="t.actualStartDate"
-                  :disabled="saving"
-                  @update:model-value="(v: string | null) => onDate(t, 'actualStartDate', v)"
-                />
-                <span class="date-sep">~</span>
-                <el-date-picker
-                  size="small"
-                  type="date"
-                  value-format="YYYY-MM-DD"
-                  placeholder="종료일"
-                  :model-value="t.actualEndDate"
-                  :disabled="saving"
-                  @update:model-value="(v: string | null) => onDate(t, 'actualEndDate', v)"
-                />
-              </div>
-            </td>
-            <td class="col-progress">
-              <div class="progress-cell">
-                <ProgressBar :value="t.progressRate" />
-                <template v-if="hasChildren(t)">
-                  <span class="pct auto">{{ t.progressRate }}% <em>(자동)</em></span>
-                </template>
-                <template v-else>
-                  <div class="progress-editor">
-                    <button class="step" :disabled="t.progressRate <= 0 || saving" @click="bump(t, -10)">−</button>
-                    <input
-                      class="pct-input"
-                      type="number"
-                      min="0"
-                      max="100"
-                      :value="t.progressRate"
-                      :disabled="saving"
-                      @change="onInput(t, ($event.target as HTMLInputElement).value)"
-                    />
-                    <span class="pct-suffix">%</span>
-                    <button class="step" :disabled="t.progressRate >= 100 || saving" @click="bump(t, 10)">+</button>
-                  </div>
-                </template>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <span class="col-status">
+                <StatusBadge :status="data.status" :label="statusLabel(data.status)" />
+              </span>
+              <span class="col-dates" @click.stop>
+                <div class="date-row">
+                  <span class="date-tag plan">계획</span>
+                  <el-date-picker
+                    size="small"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="시작일"
+                    :model-value="data.plannedStartDate"
+                    :disabled="saving"
+                    @update:model-value="(v: string | null) => onDate(data, 'plannedStartDate', v)"
+                  />
+                  <span class="date-sep">~</span>
+                  <el-date-picker
+                    size="small"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="종료일"
+                    :model-value="data.plannedEndDate"
+                    :disabled="saving"
+                    @update:model-value="(v: string | null) => onDate(data, 'plannedEndDate', v)"
+                  />
+                </div>
+                <div class="date-row">
+                  <span class="date-tag actual">실제</span>
+                  <el-date-picker
+                    size="small"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="시작일"
+                    :model-value="data.actualStartDate"
+                    :disabled="saving"
+                    @update:model-value="(v: string | null) => onDate(data, 'actualStartDate', v)"
+                  />
+                  <span class="date-sep">~</span>
+                  <el-date-picker
+                    size="small"
+                    type="date"
+                    value-format="YYYY-MM-DD"
+                    placeholder="종료일"
+                    :model-value="data.actualEndDate"
+                    :disabled="saving"
+                    @update:model-value="(v: string | null) => onDate(data, 'actualEndDate', v)"
+                  />
+                </div>
+              </span>
+              <span class="col-progress" @click.stop>
+                <div class="progress-cell">
+                  <ProgressBar :value="data.progressRate" />
+                  <template v-if="hasChildren(data)">
+                    <span class="pct auto">{{ data.progressRate }}% <em>(자동)</em></span>
+                  </template>
+                  <template v-else>
+                    <div class="progress-editor">
+                      <button class="step" :disabled="data.progressRate <= 0 || saving" @click="bump(data, -10)">−</button>
+                      <input
+                        class="pct-input"
+                        type="number"
+                        min="0"
+                        max="100"
+                        :value="data.progressRate"
+                        :disabled="saving"
+                        @change="onInput(data, ($event.target as HTMLInputElement).value)"
+                      />
+                      <span class="pct-suffix">%</span>
+                      <button class="step" :disabled="data.progressRate >= 100 || saving" @click="bump(data, 10)">+</button>
+                    </div>
+                  </template>
+                </div>
+              </span>
+            </div>
+          </template>
+        </el-tree>
+      </div>
 
       <!-- GANTT VIEW -->
       <div v-else>
@@ -529,32 +535,43 @@ watch(projectId, load)
   font-size: 13px;
 }
 
-.task-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+/* ---- WBS tree ---- */
+.tree-wrap { width: 100%; }
 
-.task-table th {
-  text-align: left;
+.tree-head {
+  display: flex;
+  align-items: center;
   font-size: 11px;
   color: var(--text-muted);
   font-weight: 600;
+  text-transform: uppercase;
   padding: 8px 10px;
   border-bottom: 1px solid var(--border);
-  text-transform: uppercase;
 }
 
-.task-table td {
-  padding: 10px;
-  border-bottom: 1px solid var(--border);
+.tree-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
   font-size: 13px;
   color: var(--text-primary);
-  vertical-align: middle;
+  padding: 4px 0;
+  gap: 0;
 }
 
-.col-status { width: 120px; }
-.col-dates { width: 320px; }
-.col-progress { width: 260px; }
+/* column widths shared by header + rows */
+.col-name { flex: 1 1 auto; min-width: 0; }
+.col-status { flex: 0 0 120px; width: 120px; }
+.col-dates { flex: 0 0 320px; width: 320px; }
+.col-progress { flex: 0 0 260px; width: 260px; }
+
+/* el-tree node content height + alignment for multi-row date cells */
+.wbs-tree :deep(.el-tree-node__content) {
+  height: auto;
+  align-items: center;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
 
 .is-parent { font-weight: 600; }
 

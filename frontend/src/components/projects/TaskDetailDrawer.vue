@@ -26,7 +26,12 @@
         <!-- 상태 변경 -->
         <section class="sec">
           <h4 class="sec-title">상태 변경</h4>
-          <div class="status-row">
+          <div class="status-current">
+            <span class="status-current-label">현재:</span>
+            <StatusBadge :status="task.status" :label="statusLabel(task.status)" />
+          </div>
+          <!-- fallback: all statuses as buttons when transitions can't be resolved -->
+          <div v-if="!transitionsResolved" class="status-row">
             <button
               v-for="s in statusButtons"
               :key="s.enum"
@@ -38,6 +43,30 @@
             >
               {{ s.label }}
             </button>
+          </div>
+          <!-- transition-limited select -->
+          <el-select
+            v-else
+            class="status-select"
+            placeholder="변경할 상태 선택"
+            :disabled="saving || allowedNextStatuses.length === 0"
+            :model-value="undefined"
+            @update:model-value="(v: string) => changeStatus(v)"
+          >
+            <el-option
+              v-for="s in allowedNextStatuses"
+              :key="s.enum"
+              :value="s.enum"
+              :label="s.label"
+            >
+              <span class="opt-row">
+                <span class="opt-dot" :style="{ background: s.color }"></span>
+                {{ s.label }}
+              </span>
+            </el-option>
+          </el-select>
+          <div v-if="transitionsResolved && allowedNextStatuses.length === 0" class="status-empty">
+            이동 가능한 다음 상태가 없습니다.
           </div>
         </section>
 
@@ -273,6 +302,56 @@ function statusBtnStyle(s: { enum: string; color?: string }) {
   return { borderColor: s.color, color: s.color }
 }
 
+// Map a workflow status to the task enum: by name first, then by category.
+const NAME_TO_ENUM: Record<string, string> = {
+  대기: 'TODO',
+  진행중: 'IN_PROGRESS',
+  검토중: 'REVIEW',
+  완료: 'DONE',
+  반려: 'REJECTED',
+}
+const CATEGORY_TO_ENUM: Record<string, string> = {
+  TODO: 'TODO',
+  IN_PROGRESS: 'IN_PROGRESS',
+  DONE: 'DONE',
+}
+function wfStatusToEnum(ws: { name: string; category: string }): string | null {
+  return NAME_TO_ENUM[ws.name] ?? CATEGORY_TO_ENUM[ws.category] ?? null
+}
+
+// The workflow status object matching the task's current enum status.
+const currentWfStatus = computed(() => {
+  const wf = workflow.value
+  if (!wf || !task.value) return null
+  return wf.statuses.find((ws) => wfStatusToEnum(ws) === task.value!.status) ?? null
+})
+
+// Allowed next statuses, derived from outgoing transitions of the current status.
+const allowedNextStatuses = computed(() => {
+  const wf = workflow.value
+  const cur = currentWfStatus.value
+  if (!wf || !cur) return []
+  const toIds = wf.transitions
+    .filter((tr) => tr.fromStatusId === cur.statusId)
+    .map((tr) => tr.toStatusId)
+  const seen = new Set<string>()
+  const out: { enum: string; label: string; color: string }[] = []
+  for (const id of toIds) {
+    const ws = wf.statuses.find((s) => s.statusId === id)
+    if (!ws) continue
+    const enumVal = wfStatusToEnum(ws)
+    if (!enumVal || seen.has(enumVal)) continue
+    seen.add(enumVal)
+    out.push({ enum: enumVal, label: statusLabel(enumVal), color: ws.color })
+  }
+  return out
+})
+
+// Whether we could resolve the workflow + current status to limit transitions.
+const transitionsResolved = computed(
+  () => !!workflow.value && !!currentWfStatus.value
+)
+
 async function onOpen() {
   if (!props.taskId) return
   loading.value = true
@@ -498,6 +577,35 @@ async function addDeliverable() {
 .status-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+.status-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.status-current-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.status-select {
+  width: 100%;
+}
+.status-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.opt-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.opt-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
 }
 .progress-edit {
   display: flex;
